@@ -1,0 +1,600 @@
+---
+title: "Actividad 1. R y Estadística"
+author: "Xosé Manuel Tomé Castro"
+date: "2024-11-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### **1. Teniendo en cuenta los siguientes genes: AQ_ALOX5, AQ_CD274, AQ_CHKA, AQ_CSF2, AQ_FOXO3, AQ_IL6, AQ_LDHA, AQ_LIF, AQ_MAPK1, AQ_NOS2, AQ_IFNG, AQ_PDCD1, AQ_PPARG, AQ_TGFB1, AQ_TNF. Para responder este ejercicio, apóyate en un diagrama de cajas en el que visualices por cada expresión de gen 2 cajas: 1 para trata y otro para tratB.**
+
+#### 1.1) Cargar las librerías necesarias
+
+Para comenzar, cargo las librerías necesarias para realizar las 3 actividades
+
+```{r library, echo=TRUE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(ComplexHeatmap)
+```
+
+#### 1.2) Leer las tablas CSV
+
+A continuación, leo un archivo CSV que contiene los datos de expresión génica en .cvs.
+
+```{r, echo=TRUE} 
+
+dataset_expresion_genes <- read.csv("Dataset expresión genes.csv")
+```
+
+
+#### 1.3) Selección las columnas de los genes
+
+Creo nuevo dataframe **df_trat_genes_AQ** con el filtrado de las columnas que comienzan con AQ_ (que representan los genes) y la columna que contiene los datos del tratamiento A y B para cada tratamiento del dataset expresión de genes cvs. Además cambio los 0.000e+00 por un valor cercano a 0, 1e-30. Hago esto para evitar errores o warnings
+
+```{r, echo=TRUE}
+
+# Filtro las columnas que comienzan con 'AQ_' y las columnas relacionadas con el tratamiento
+genes_columns <- grep("^AQ_", colnames(dataset_expresion_genes), value = TRUE)  # Buscar columnas que comienzan con 'AQ_'
+tratamiento_column <- "trat"  # Ajusta el nombre de la columna del tratamiento
+
+# Filtrar el dataframe para obtener solo las columnas relevantes
+df_trat_genes_AQ <- dataset_expresion_genes[, c(genes_columns, tratamiento_column)]
+
+# Reemplazo los valores exactamente igual a 0.000e+00 por un valor muy pequeño (1e-30)
+df_trat_genes_AQ[df_trat_genes_AQ == 0.000e+00] <- 1e-30
+
+#any(df_trat_genes_AQ == 0.000e+00)        # Compruebo si hay ceros en el dataframe
+
+
+```
+
+
+#### 1.4) Transformación los datos a formato largo
+
+Pivoto las columna de genes y sus expresiones geneticas en el dataframe **df_trat_genes_AQ**. Y creo un nuevo dataframe **df_long_genes_trat** en que las columnas ahora se dividen en tratamiento, gen con su expresión.
+
+```{r, echo=TRUE}
+
+df_long_genes_trat <- df_trat_genes_AQ %>%
+  pivot_longer(
+    cols = starts_with("AQ_"), 
+    names_to = "Gen", 
+    values_to = "Expresión")
+
+```
+
+
+#### 1.7) Filtrado de genes del ejercicio
+
+Selecciono el conjunto de genes (AQ_ALOX5", "AQ_CD274", "AQ_CHKA", "AQ_CSF2", "AQ_FOXO3","AQ_IL6", "AQ_LDHA", "AQ_LIF", "AQ_MAPK1", "AQ_NOS2", "AQ_IFNG", "AQ_PDCD1", "AQ_PPARG", "AQ_TGFB1", "AQ_TNF) del **dataframe df_long_genes_trat**, y se verifica con el vector **genes_de_actividad1** creada. Obtengo un dataframe con el subconjunto de genes de interés (con su expresión y tratamiento aplicado), llamado **df_genes_filtrados**
+
+```{r seleccion de genes, echo=TRUE}
+
+genes_de_actividad1 <- c("AQ_ALOX5", "AQ_CD274", "AQ_CHKA", "AQ_CSF2", "AQ_FOXO3", 
+                         "AQ_IL6", "AQ_LDHA", "AQ_LIF", "AQ_MAPK1", "AQ_NOS2", 
+                         "AQ_IFNG", "AQ_PDCD1", "AQ_PPARG", "AQ_TGFB1", "AQ_TNF")
+
+df_genes_filtrados <- df_long_genes_trat %>%
+#Verifico si el vector están en el dataframe df_long_genes_trat_clean
+  filter(Gen %in% genes_de_actividad1)
+
+```
+
+#### 1.8) Creación de los gráficos de boxplot con bucle for
+
+Creo un proceso automatizado para generar gráficos de caja para el conjunto de genes y luego almacenar esos gráficos en una lista para finalmente combinarlos en una sola imagen. Para ello, uso el dataframe filtrado con el conjuntos de genes, **df_genes_filtrados**, y es el que usamos para generar un gráfico de cajas (boxplot) para cada gen de la lista de genes seleccionados. Uso un bucle **for** sobre el vector anterior **genes_de_actividad1**, almacenando temporalmente cada gen en la variable **g**; automatizando el proceso. Se filtra el dataframe **df_genes_filtrados** donde la columna gen coincida con el gen actual **g**. Esto genera un dataframe "temporal" para este bucle, **df_gen**, que solo se usará en esta parte con la iteración de los genes mencionados anteriormente. Se crea el código de boxplot con la variable **caja_cada_gen** para cada gen añadiendo los puntos de valores atipicos en rojo, puntos para cada valor individual y separando cada tratamiento por color azul y lila. Luego, almaceno cada gráfico en una lista **grafica_caja_lista**, usando el nombre del gen como clave para cada elemento.
+
+```{r Cajas, echo=TRUE, warning=FALSE}
+
+
+# Creo la lista de gráficos vacía
+grafica_caja_lista <- list()  
+
+# Uso blucle for con df_gen temporal
+for (g in genes_de_actividad1) {
+  df_gen <- df_genes_filtrados %>%
+    filter(Gen == g)
+
+  # Creo los gráficos de caja para cada gen con con el dataframe **df_gen**
+  caja_cada_gen <- ggplot(df_gen, aes(x = trat, y = Expresión, fill = trat)) + 
+    geom_boxplot(outlier.size = 3, outlier.colour = "red") +  # Añado los puntos de los valores atípicos de la caja
+    geom_jitter(width = 0.2, size = 1, alpha = 0.6, color = "black") +  # Añado puntos para cada valor individual
+    labs(title = g, y = "Expresión", x = "Tratamiento") +
+    scale_fill_manual(values = c("tratA" = "#9370DB", "tratB" = "#4682B4")) +  # Añado colors para los boxplots
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+    theme_minimal()  
+  
+  # Agrego el gráfico a la lista
+  grafica_caja_lista[[g]] <- caja_cada_gen  # Agrego el gráfico de caja a la lista
+  
+  print(caja_cada_gen)  
+} 
+```
+
+**Nota: Se genera un "warning" en el que se eliminan 65 datos, aquellos con el valor 1e-30, debido a que estos valores tan pequeños están fuera del rango visualizable del boxplot y no pueden ser representados adecuadamente. Intenté resolver este problema aplicando el logaritmo en base 10 (log10) a la columna de expresión para evitar el warning, pero las gráficas de los tratamientos A y B se vuelven demasiado pequeñas debido a la gran diferencia de escala entre los datos. Intenté cambiar también la escala del eje Y para evitar este "warning" pero no funcionó tampoco.**
+
+
+#### 1.9) Combinación de todos los boxplots en uno con bucle for
+
+Finalmente, combino todos los gráficos generados en una sola imagen. Al igual que antes, automatizo el proceso, pero esta vez uso la lista **grafica_caja_lista**, que contiene los gráficos de caja creados previamente. Para combinar estos gráficos en una sola imagen, utilizo el paquete patchwork. El resultado es el gráfico combinado **grafico_final_combinado**, donde los gráficos se organizan en una cuadrícula de 5 columnas. Además, se agrupan todas las leyendas en una sola usando la opción guides = 'collect'.
+
+```{r combinacion, echo=TRUE, fig.height=10, fig.width=15, warning=FALSE}
+# Una vez que los gráficos están en la lista, lo combino 
+grafico_final_combinado <- wrap_plots(grafica_caja_lista, ncol = 5) + 
+  plot_layout(guides = "collect")  # Agrupo todas las leyendas en una sola
+
+# Muestro el gráfico combinado
+print(grafico_final_combinado)
+
+```
+
+#### **¿Qué interpretación sacas de la distribución de la expresión de los genes cuando los comparamos por tipo de tratamiento? (mínimo 150 palabras de extensión).**
+
+Al analizar la expresión de los genes **AQ_ALOX5, AQ_CD274, AQ_CHKA, AQ_CSF2, AQ_FOXO3, AQ_IL6, AQ_LDHA, AQ_LIF, AQ_MAPK1, AQ_NOS2, AQ_IFNG, AQ_PDCD1, AQ_PPARG, AQ_TGFB1** y **AQ_TNF** mediante diagramas de cajas, se observan patrones interesantes en función de los tratamientos A y B.
+
+#### Grupo 1: Genes con Diferencias Notables y Sin Solapamiento (PDCD1, IFNG, CSF2)
+
+Para **PDCD1, IFNG** y **CSF2**, las diferencias en sus medianas entre los tratamientos A y B son evidentes y estadísticamente significativas. La mediana más alta para el tratamiento B indica una menor expresión de estos genes en comparación con el tratamiento A, lo que sugiere que **el tratamiento B se relaciona con una expresión genética menor**. Esto podría estar relacionado con una mayor regulación de funciones específicas en la respuesta inmune o inflamatoria bajo el tratamiento B. Además, en el caso de **CSF2**, la mayor altura de la caja para el tratamiento A sugiere una dispersión elevada, lo cual indica que los pacientes pueden tener una respuesta variable a este tratamiento. **Los puntos rojos representan valores atípicos o outliers**, que muestran respuestas significativamente distintas en algunos pacientes. Esto podría señalar una variabilidad biológica considerable o la existencia de subpoblaciones con respuestas específicas.
+
+#### Grupo 2: Genes con Diferencias Notables y Ligero Solapamiento (MAPK1, FOXO3, CHKA, ALOX5)
+
+En este grupo, los genes **MAPK1, FOXO3, CHKA** y **ALOX5** muestran medianas más altas bajo el tratamiento B en comparación con el tratamiento A, lo que indica que el tratamiento B se relaciona con una expresión genética menor, aunque con cierto grado de solapamiento en las cajas. Esto sugiere que el tratamiento B tiene posiblemente un efecto inhibidor moderado y variable en estos genes, sin una inhibición tan homogénea como en el primer grupo. En particular, las cajas y los bigotes de **MAPK1** y **FOXO3** en el tratamiento B son más pequeñas y simétricas, indicando menor dispersión en los datos y una inhibición más consistente. **Los outliers observados en estos genes reflejan una variabilidad en la respuesta de algunos pacientes**, lo que sugiere que ciertos individuos pueden responder de manera diferente al tratamiento.
+
+#### Grupo 3: Genes con Medianas Similares y Solapamiento Completo (TGFB1, LDHA, IL6, TNF, LIF, PPARG, NOS2, CD274)
+
+Los genes en este grupo muestran medianas y cajas prácticamente solapadas entre los tratamientos A y B, lo que indica efectos similares de ambos tratamientos sobre su expresión. No se observan diferencias estadísticamente significativas, lo cual sugiere que estos genes son menos susceptibles a los tratamientos aplicados o que ambos tratamientos actúan de forma comparable. Sin embargo, **TGFB1** destaca levemente, mostrando una pequeña reducción en su expresión bajo el tratamiento B, aunque esta diferencia es muy pequeña y no estadísticamente relevante. La simetría de las cajas y la dispersión limitada sugieren una expresión estable y homogénea de estos genes en ambas condiciones de tratamiento. **Los valores atípicos en este grupo podrían reflejar diferencias individuales menores, sin una tendencia significativa hacia alguno de los tratamientos.**
+
+En conclusión, los patrones observados indican que el tratamiento B tiene un efecto inhibidor significativo en los genes del **Grupo 1**, mientras que en el **Grupo 2** el efecto es menos pronunciado y presenta mayor variabilidad. En el **Grupo 3**, ambos tratamientos producen respuestas casi idénticas, sugiriendo que estos genes podrían no estar fuertemente regulados por los tratamientos aplicados.Además la presencia de outliers podría indicar subgrupos específicos con perfiles genéticos o moleculares distintos, lo cual podría ser relevante para la personalización de tratamientos.
+
+
+#### **2. Teniendo en cuenta los siguientes parámetros bioquímicos para toda la población: glucosa, leucocitos, linfocitos, neutrofilos, chol, hdl, hierro, igA, igE, igG, igM, ldl, pcr, transferrina, trigliceridos, cpk: Para responder este ejercicio, apóyate en un histograma en el que se visualice la frecuencia de cada variable utilizando aproximadamente 30 bins (a mayor bins, mayor número de barras).**
+
+#### 2.1) Se cargaron las librerias y el dataset correspondiente anteriormente.
+
+#### 2.2) Especificación y creación de vector de los parámetros bioquímicos del ejercicio
+
+```{r, echo=TRUE}
+
+parametros_bioquimicos <- c("glucosa", "leucocitos", "linfocitos", "neutrofilos", "chol", "hdl", 
+                            "hierro", "igA", "igE", "igG", "igN", "ldl", "pcr", "transferrina", 
+                            "trigliceridos", "cpk")
+
+
+```
+
+#### 2.3) Cambio del carácter "IgN" por "IgM" en el vector parámetros bioquímicos
+
+Se cambia el nombre de IgN por IgM entendiendose que por error tipográfico. 
+
+```{r, echo=TRUE}
+# Cambio "IgN" por "IgM" en el vector parametros_bioquimicos
+parametros_bioquimicos[which(parametros_bioquimicos == "igN")] <- "IgM"
+
+# Verifico y cambiar el nombre de la columna en el dataframe
+colnames(dataset_expresion_genes)[which(colnames(dataset_expresion_genes) == "igN")] <- "IgM"
+
+
+```
+
+#### 2.4) Especificación de las unidades de cada parámetro
+
+Creo otro vector **unidades** que especifíca las unidades para cada parámetro bioquímico en el mismo orden que el vector **parametros_bioquimicos**
+
+```{r, echo=TRUE}
+
+unidades <- c("mg/dL", "10^3/µL", "10^3/µL", "10^3/µL", "mg/dL", "mg/dL", 
+              "µg/dL", "mg/dL", "IU/mL", "mg/dL", "mg/dL", "mg/dL", "mg/L", 
+              "mg/dL", "mg/dL", "IU/L")
+```
+
+#### 2.5) Filtrado del dataframe para obtener solo las columnas relevantes
+
+Se crea un nuevo dataframe **df_para_bioquimicos** donde se seleccionan las columnas y filas especiíficas del dataframe **dataset_expresion_genes** en base al vector **parametros_bioquimicos**
+
+```{r, echo=TRUE}
+
+df_para_bioquimicos <- dataset_expresion_genes[, c(parametros_bioquimicos)]
+
+```
+
+
+#### 2.6) Transformomación los datos a formato largo
+
+Pivoto las columna de parametros bioquimicos y sus valores en el dataframe **df_para_bioquimicos**. Y creo un nuevo dataframe *df_long_para_bioquimicos** en que las columnas ahora se diviven en parametros y valores
+
+```{r, echo=TRUE}
+# Transformo el dataframe a formato largo (pivotar las columnas de parámetros bioquímicos)
+df_long_para_bioquimicos <- df_para_bioquimicos %>%
+  pivot_longer(
+    cols = all_of(parametros_bioquimicos),  # Selección de las columnas de parámetros
+    names_to = "Parametro",                 # Columna para el nombre del parámetro
+    values_to = "Valor")                    # Columna para los valores de los parámetros
+
+```
+
+
+
+#### 2.7) Crear un histograma con densidad y área sombreada para cada parámetro usando el bucle for
+
+Al igual que en el ejercicio anterior, creo un proceso automatizado pero esta vez para generar gráficos de histograma con densidad para cada parámetro bioquímico y luego almacenar esos gráficos en una lista para finalmente combinarlos en una sola imagen. Primeramente, defino la lista **grafica_histograma_lista**. A continuación, utilizo el dataframe **df_long_para_bioquimicos**, que contiene los datos de los parámetros bioquímicos. Para cada parámetro en la lista **parametros_bioquimicos**, utilizo un bucle **for**, almacenando temporalmente cada parámetro en la variable **param** y creando el dataframe temporal **df_histogram_param**. Durante cada iteración, filtro el dataframe **df_long_para_bioquimicos** para obtener solo los datos correspondientes al parámetro actual del dataframe **parametros_bioquimicos**. Además añado para cada parámetro las unidades correspondiente del vector **unidades**. Después, genero un histograma para cada parámetro, añadiendo una curva de densidad con un área sombreada. Genero el histograma con la variable **histograma_con_densidad**. . Finalmente, almaceno cada gráfico en la lista **grafica_histograma_lista**, utilizando el nombre del parámetro como clave para cada elemento, y lo imprimo para su visualización.
+
+
+
+```{r, echo=TRUE}
+
+# Creo una lista para almacenar los gráficos
+grafica_histograma_lista <- list()  # Definir correctamente la lista
+
+# Creo un histograma con densidad y área sombreada para cada parámetro
+for (param in parametros_bioquimicos) {
+  # Filtro los datos para el parámetro actual
+  df_histogram_param <- df_long_para_bioquimicos %>% 
+    filter(Parametro == param)
+  
+  # Obtengo la unidad correspondiente para el parámetro
+  unidad <- unidades[which(parametros_bioquimicos == param)]
+  
+  ## Creo el histograma con la curva de densidad y área sombreada
+  histograma_con_densidad <- ggplot(df_histogram_param, aes(x = Valor)) + 
+    geom_histogram(binwidth = diff(range(df_histogram_param$Valor)) / 30, 
+                   fill = "#9370DB", color = "black", alpha = 0.7, aes(y = after_stat(density))) +  
+    geom_density(aes(fill = "..x.."), color = "black", linewidth = 1, alpha = 0.3) +  
+    labs(x = paste(param, "(", unidad, ")", sep = ""),
+         y = "Densidad/Frecuencia") +  #Uso labs() para definir el título
+    theme_minimal() + 
+    theme(
+      axis.text.x = element_text(angle = 0, hjust = 1), # Ajusto texto eje X
+      plot.title = element_text(size = 16)  # Reduzco el tamaño de los títulos de cada gráfico
+    ) +
+    ggtitle(paste("Histograma y Densidad de", param))  # Título con el nombre del parámetro
+  
+  # Agrego el gráfico a la lista
+  grafica_histograma_lista[[param]] <- histograma_con_densidad
+  
+  # Muestro el gráfico en la consola
+  print(histograma_con_densidad)
+}
+
+
+```
+
+#### 2.8) Combinar todos los gráficos en una sola imagen
+
+Finalmente, combino todos los gráficos generados en una sola imagen. Al igual que antes, automatizo el proceso, pero esta vez uso la lista **grafica_histograma_lista**, que contiene los histogramas creados previamente. Para combinar estos gráficos en una sola imagen, utilizo el paquete patchwork. El resultado es el gráfico combinado **histograma_combinado_grafic**, donde los gráficos se organizan en una cuadrícula de 4 columnas. Además, se agrupan todas las leyendas en una sola usando la opción guides = 'collect'.
+
+```{r filtrado, echo=TRUE, fig.height=10, fig.width=15, warning=FALSE}
+
+# Combino todos los gráficos en una sola imagen usando patchwork
+histograma_combinado_grafico <- wrap_plots(grafica_histograma_lista, ncol = 4) +   # Ajusto ncol 
+  plot_layout(guides = "collect")  # Agrupo todas las leyendas en una sola
+
+# Muestro el gráfico combinado en la consola
+print(histograma_combinado_grafico)
+
+
+```
+#### **¿Qué interpretación sacas de la distribución de los datos de las variables bioquímicas en toda la población? (mínimo 100 palabras de extensión).¿Crees que sigue una distribución normal o simétrica en la que se visualiza una distribución parecida a una campana de Gauss? (mínimo 100 palabras de extensión).**
+
+
+Al realizar el análisis de los parámetros bioquímicos en la población, decidí clasificar los datos en cuatro categorías: parámetros metabólicos, inmunes, inflamatorios y otros, para obtener una visión más organizada y detallada. Estas categorías incluyen:
+
+- **Metabólicos**: glucosa, triglicéridos, colesterol, HDL y LDL.
+
+- **Inmunes**: leucocitos, linfocitos, neutrófilos, IgA, IgM, IgE e IgG.
+
+- **Inflamatorios**: proteína C reactiva (PCR).
+
+- **Otros**: creatina quinasa (CPK), transferrina y hierro.
+
+**Análisis de Parámetros Metabólicos**
+
+En los histogramas de los parámetros metabólicos, observo asimetrías hacia la derecha en glucosa, triglicéridos, HDL y LDL, lo que indica que hay una mayor cantidad de pacientes con valores bajos o moderados, mientras que un pequeño grupo presenta niveles anormalmente altos, lo cual se visualiza en los extremos del histograma. Esto sugiere la existencia de outliers o datos atípicos que podrían estar asociados con condiciones como el síndrome metabólico o dislipidemias. El colesterol, sin embargo, presenta una distribución más cercana a la normal, lo cual podría reflejar una regulación más homogénea en la población, probablemente debido a los mecanismos de homeostasis del colesterol en el organismo.
+
+**Análisis de Parámetros Inmunológicos**
+
+Para los parámetros inmunes, los histogramas muestran una asimetría hacia la derecha en la mayoría de las variables, como leucocitos, neutrófilos, IgA, IgM e IgE, lo que sugiere que una gran parte de la población tiene valores dentro de un rango típico, mientras que una pequeña proporción tiene niveles elevados, posiblemente por infecciones o respuestas alérgicas. IgG y linfocitos son excepciones, ya que ambos muestran una distribución cercana a la normal, lo cual indica que estos parámetros son más homogéneos en la muestra estudiada. En particular, los histogramas de linfocitos y neutrófilos presentan picos de frecuencia muy marcados (alrededor de 20% y 30%, respectivamente) en sus valores centrales. Esto significa que estos valores se concentran en un rango específico, mientras que el resto de la distribución es más dispersa. Este fenómeno indica una gran heterogeneidad en las respuestas inmunes entre los pacientes, lo cual puede estar relacionado con factores individuales, como el tipo y estadio del cáncer, que afecta el estado inmunológico.
+
+**Análisis de Parámetros Inflamatorios**
+
+El parámetro inflamatorio PCR (proteína C reactiva) muestra la asimetría más pronunciada hacia la derecha de todos los histogramas analizados, con un gran número de valores atípicos. Esto sugiere que, mientras algunos pacientes presentan niveles de PCR normales o moderadamente altos, existe un subgrupo con niveles extremadamente elevados, posiblemente debido a inflamación crónica o infecciones activas. La alta variabilidad en PCR también es indicativa de la diversidad en las respuestas inflamatorias de la población, lo cual podría estar influenciado por el tipo de cáncer, el tratamiento recibido o la presencia de otras condiciones inflamatorias.
+
+**Análisis de Otros Parámetros**
+
+En la categoría de otros parámetros, encontramos una asimetría hacia la derecha en el hierro y la creatina quinasa (CPK), lo cual indica la presencia de valores altos en algunos pacientes, posiblemente relacionados con daños musculares o estados de anemia. La transferrina, sin embargo, muestra una distribución cercana a la normal, lo cual sugiere que este parámetro es más estable en la población. Esto puede deberse a que la transferrina, como proteína de transporte de hierro, se encuentra regulada dentro de un rango relativamente estable, a diferencia de otros parámetros que fluctúan más con los estados de salud del individuo.
+
+En conjunto, estos patrones de distribución indican una gran heterogeneidad entre los datos bioquímicos de los pacientes. Las asimetrías y la presencia de outliers sugieren que los pacientes presentan variaciones significativas en sus perfiles bioquímicos, lo cual puede deberse a factores moleculares, genéticos, ambientales y al tipo específico de cáncer o su estadio. Esto resalta la complejidad de establecer relaciones universales a nivel molecular entre las patologías de estos pacientes, ya que cada individuo parece tener un perfil único. La gran dispersión en algunos parámetros también indica que estos pacientes pueden responder de forma distinta a tratamientos, lo cual enfatiza la necesidad de enfoques personalizados en el manejo y tratamiento de enfermedades como el cáncer.
+
+
+
+#### **3. Mapea todos los valores de expresión de genes para poder visualizar posibles patrones entre los datos de los pacientes. Para responder esta pregunta, apóyate en un heatmap en el que visualices los datos crudos de todas las variables AQ (expresión de genes). **
+
+#### 3.1) Se cargaron las librerias y el dataset correspondiente anteriormente.
+
+#### 3.2) Selección de las columnas de genes (expresión de genes AQ_) y pacientes
+
+Selecciono las columnas que comienzan con AQ_ asociadas directamente a numeros (del 1 al 67) que son los números de pacientes.
+
+```{r, echo=TRUE}
+
+genes_columns <- dataset_expresion_genes %>%
+  select(starts_with("AQ_")) %>%
+  colnames()  # vector de los nombres de las columnas
+
+```
+
+#### 3.3) Extracción de los datos de expresión de genes
+
+Creo un dataframe **df_genes_expresion** en el que solo está los genes en columnas y la clasificación de números en las filas
+
+```{r, echo=TRUE}
+# Selecciono las columnas de expresión genética usando los nombres de las columnas
+df_genes_expresion <- dataset_expresion_genes[, genes_columns]
+
+```
+
+#### 3.4)Cambio los nombres de las filas de df_genes_expresion a "Paciente1", "Paciente2", etc.
+
+Asigno nombres únicos a las filas del dataframe **df_genes_expresion**, etiquetándolas como "Pac.1", "Pac.2", "Pac.3", etc., referenciando a los pacientes. Utilizando una secuencia numérica generada automáticamente, **seq_len** y añado la función **paste0** que concatena el caracter "Pac." con cada numero de la secuencia generada (del 1 al 67)
+
+```{r, echo=TRUE}
+rownames(df_genes_expresion) <- paste0("Pac.", seq_len(nrow(df_genes_expresion)))
+
+```
+
+#### 3.5) Normalizacion y transposición de la dataframe 
+
+Creo un dataframe **df_scaled_df_genes_expresion_t** normalizando primero el dataframe de expresión para cada gen utilizando la función **scale()**, lo que ajusta cada columna (representando a un gen) para que tenga una media de 0 y una desviación estándar de 1, lo que es importante cuando los genes tienen diferentes rangos de expresión. Después de la normalización, transpongo el dataframe utilizando la función **t()**, de modo que las filas representen a los genes y las columnas los pacientes, facilitando la visualización en un heatmap del eje X para pacientes y eje Y para genes.
+
+```{r, echo=TRUE}
+df_scaled_df_genes_expresion_t <- t(scale(df_genes_expresion))  # Normalización y transposición
+```
+
+
+#### 3.6) Introducción de semilla para para que los resultados sean reproducibles
+
+Establezco una semilla aleatoria utilizando la función set.seed() para garantizar la reproducibilidad de los resultados.
+
+```{r, echo=TRUE}
+# Establezco una semilla para que los resultados sean reproducibles
+set.seed(1995)
+
+```
+
+#### 3.7) Creación del heatmap con ComplexHeatmap 
+
+Genero un **heatmap** altamente personalizado para visualizar datos de expresión génica utilizando el paquete `ComplexHeatmap`. Enel dataframe (`df_scaled_df_genes_expresion_t`) aplico agrupamiento jerárquico en ambos ejes, utilizando la distancia Euclidiana y el método de enlace completo, lo que facilita la detección de clústeres de genes o pacientes con perfiles similares. Los colores del heatmap, definidos mediante un gradiente de azul a rojo, reflejan niveles bajos a altos de expresión. 
+
+```{r heatmap, echo=TRUE, fig.width=15, fig.height=10}
+# Creo el heatmap y lo muestro en la consola
+set.seed(1995)
+Heatmap(df_scaled_df_genes_expresion_t,
+        name = "Expresión génica",   
+        cluster_rows = TRUE,         
+        cluster_columns = TRUE,      
+        clustering_distance_rows = "euclidean",  
+        clustering_distance_columns = "euclidean",  
+        clustering_method_rows = "complete",  
+        clustering_method_columns = "complete",  
+        
+        # Colores y títulos
+        col = colorRampPalette(c("darkblue","purple","white","yellow","red"))(100),  
+        row_title = "Genes",
+        column_title = "Pacientes",
+        row_title_gp = gpar(fontsize = 6, fontface = "bold", col = "black"),  
+        column_title_gp = gpar(fontsize = 6, fontface = "bold", col = "black"),
+        
+        # Personalización de etiquetas de filas (eje Y)
+        show_row_names = TRUE,
+        row_names_side = "left",
+        row_names_gp = gpar(fontsize = 5, col = "black", fontface = "italic"),
+        row_dend_side = "left",
+        
+        # Personalización de etiquetas de columnas (eje X)
+        show_column_names = TRUE,
+        column_names_side = "top",
+        column_names_gp = gpar(fontsize = 5, col = "black", fontface = "italic", rot = 45),
+        column_dend_side = "top",
+        
+        # Parámetros para la leyenda
+        heatmap_legend_param = list(
+          title = "Expresión génica",
+          title_gp = gpar(fontsize = 5, fontface = "bold"),
+          labels_gp = gpar(fontsize = 5),
+          grid_width = unit(1, "cm"),
+          grid_height = unit(1, "cm")
+        ),
+        
+        # Agrupamiento K-means
+        row_km = 4,
+        column_km = 4,
+        
+        # Ajustes adicionales para bordes entre las celdas
+        border = "black"
+)
+```
+La inclusión del paciente 13 con altos niveles de expresión en los genes **AQ_ADIPOQ** y **AQ_NOX5** puede estar sesgando la visualización global del heatmap, ya que puede hacer que las variaciones en los demás genes sean menos evidentes debido a las escalas de color. Al tener estos dos genes con valores extremadamente altos para ese paciente, los colores asociados con esos genes dominan el gradiente y, como resultado, los datos de otros genes pueden no mostrarse con suficiente contraste.
+
+1. **Versión 1: Quitando al paciente 13 pero manteniendo los dos genes**: así elimino la influencia del paciente 13, pero mantengo los genes **AQ_ADIPOQ** y **AQ_NOX5**. Así puedo ver cómo se distribuyen los niveles de expresión en los otros pacientes sin la "anomalía" de este paciente en particular. Puedo ver si los valores extremos de estos dos genes están distorsionando la visualización.
+
+2. **Versión 2: Quitando los dos genes AQ_ADIPOQ y AQ_NOX5**: Esta versión elimino la fuente de los valores extremos, lo que puede ser útil para evitar que estos genes dominen el gradiente de colores. Al eliminar estos genes, puedo observar cómo se distribuye la expresión génica de los demás sin la interferencia de estos datos anómalos.
+
+
+#### 3.8) Creación un nuevo dataframe sin "Paciente13"
+
+Creo un nuevo dataframe, **`df_genes_expresion_sin_paciente13`**, excluyendo al "Paciente13" del dataframe original **`df_genes_expresion`**. Filtro las filas cuya etiqueta no sea "Pac.13", utilizando la función `rownames()` para acceder a los nombres de las filas. 
+
+```{r, echo=TRUE}
+
+# Creo un nuevo dataframe sin "Paciente13"
+df_genes_expresion_sin_paciente13 <- df_genes_expresion[rownames(df_genes_expresion) != "Pac.13", ]
+
+```
+
+#### 3.9) Transponer y escalar del nuevo dataframe (sin "Paciente13")
+
+
+```{r, echo=TRUE}
+
+df_scaled_t_sin_paciente13 <- t(scale(df_genes_expresion_sin_paciente13))
+
+```
+
+
+
+#### 3.10) Creación del heatmap con ComplexHeatmap sin paciente 13
+
+
+```{r heatmap2, echo=TRUE, fig.width=15, fig.height=10}
+
+set.seed(1995)
+
+Heatmap(df_scaled_t_sin_paciente13,
+        name = "Expresión génica",   
+        cluster_rows = TRUE,         
+        cluster_columns = TRUE,      
+        clustering_distance_rows = "euclidean",  
+        clustering_distance_columns = "euclidean",  
+        clustering_method_rows = "complete",  
+        clustering_method_columns = "complete",  
+        row_dend_width = unit(3, "cm"),
+        column_dend_height = unit(3, "cm"),
+        
+        # Colores y títulos
+        col = colorRampPalette(c("darkblue", "purple", "white", "yellow", "red"))(100),  
+        row_title = "Genes",
+        column_title = "Pacientes",
+        row_title_gp = gpar(fontsize = 6, fontface = "bold", col = "black"),
+        column_title_gp = gpar(fontsize = 6, fontface = "bold", col = "black"),
+        
+        # Personalización de etiquetas de filas (eje Y)
+        show_row_names = TRUE,
+        row_names_side = "left",
+        row_names_gp = gpar(fontsize = 5, col = "black", fontface = "italic"),
+        row_dend_side = "left",
+        
+        # Personalización de etiquetas de columnas (eje X)
+        show_column_names = TRUE,
+        column_names_side = "top",
+        column_names_gp = gpar(fontsize = 5, col = "black", fontface = "italic", rot = 45),
+        column_dend_side = "top",
+        
+        # Parámetros para la leyenda
+        heatmap_legend_param = list(
+          title = "Expresión génica",
+          title_gp = gpar(fontsize = 5, fontface = "bold"),
+          labels_gp = gpar(fontsize = 5),
+          grid_width = unit(1, "cm"),
+          grid_height = unit(1, "cm")
+        ),
+        
+        # Agrupamiento K-means
+        row_km = 4,
+        column_km = 4,
+        
+        # Ajustes adicionales para bordes entre las celdas
+        border = "black"
+)
+
+```
+He mejorado la gráfica del heatmap, ajustando la gama de colores para que haya una mayor variabilidad entre los genes. Ahora se pueden observar más tonalidades de amarillo, lo que indica una mayor amplitud en los niveles de expresión, así como algunos colores rojos en ciertos genes, lo que refleja niveles de expresión más altos en comparación con los demás. 
+
+
+#### 3.11) Creación de un nuevo dataframe sin los genes "AQ_ADIPOQ, AQ_NOX5"
+
+
+```{r, echo=TRUE}
+
+df_genes_expresion_sin_genes_ADIPOQ_NOX5 <- df_genes_expresion[, !(colnames(df_genes_expresion) %in% c("AQ_ADIPOQ", "AQ_NOX5"))]
+
+```
+
+#### 3.12) Transponer y escalar el nuevo dataframe sin los genes "AQ_ADIPOQ, AQ_NOX5"
+
+
+```{r, echo=TRUE}
+
+df_genes_expresion_sin_genes_ADIPOQ_NOX5 <- t(scale(df_genes_expresion_sin_genes_ADIPOQ_NOX5))
+
+```
+
+
+#### 3.13) Creación del heatmap con ComplexHeatmap sin los genes AQ_ADIPOQ, AQ_NOX5
+
+```{r, echo=TRUE, fig.width=15, fig.height=10}
+
+set.seed(1995)
+
+Heatmap(df_genes_expresion_sin_genes_ADIPOQ_NOX5,
+        name = "Expresión génica",   
+        cluster_rows = TRUE,         
+        cluster_columns = TRUE,      
+        clustering_distance_rows = "euclidean",  
+        clustering_distance_columns = "euclidean",  
+        clustering_method_rows = "complete",  
+        clustering_method_columns = "complete",  
+        row_dend_width = unit(3, "cm"),
+        column_dend_height = unit(3, "cm"),
+        
+        # Colores y títulos
+        col = colorRampPalette(c("darkblue", "purple", "white", "yellow", "red"))(100),  
+        row_title = "Genes",
+        column_title = "Pacientes",
+        row_title_gp = gpar(fontsize = 6, fontface = "bold", col = "black"),
+        column_title_gp = gpar(fontsize = 6, fontface = "bold", col = "black"),
+        
+        # Personalización de etiquetas de filas (eje Y)
+        show_row_names = TRUE,
+        row_names_side = "left",
+        row_names_gp = gpar(fontsize = 5, col = "black", fontface = "italic"),
+        row_dend_side = "left",
+        
+        # Personalización de etiquetas de columnas (eje X)
+        show_column_names = TRUE,
+        column_names_side = "top",
+        column_names_gp = gpar(fontsize = 5, col = "black", fontface = "italic", rot = 45),
+        column_dend_side = "top",
+        
+        # Parámetros para la leyenda
+        heatmap_legend_param = list(
+          title = "Expresión génica",
+          title_gp = gpar(fontsize = 5, fontface = "bold"),
+          labels_gp = gpar(fontsize = 5),
+          grid_width = unit(1, "cm"),
+          grid_height = unit(1, "cm")
+        ),
+        
+        # Agrupamiento K-means
+        row_km = 4,
+        column_km = 4,
+        
+        # Ajustes adicionales para bordes entre las celdas
+        border = "black"
+)
+
+```
+Esta gráfica es una mejora con respecto a la anterior, ya que los colores muestran una mayor profundidad en los niveles de expresión entre los genes. Ahora se pueden apreciar más tonalidades de amarillo, lo que indica una mayor diversidad en los valores de expresión, así como algunos colores rojos en ciertos genes, que destacan los niveles de expresión más altos. Esta gráfica es la que utilizaré para el análisis.
+
+
+#### **¿Hay algún tipo de patrón de pacientes que tiene la expresión de genes similar o diferenciada? (mínimo 150 palabras de extensión). ¿Hay grupos de genes con patrones de expresión similares o diferenciadas? **
+
+**Patrones de Expresión entre Pacientes**
+
+En el análisis del heatmap, se observa una organización clara de los pacientes en distintos clústeres a lo largo del eje X, indicando la existencia de subgrupos con perfiles de expresión génica similares. Estos patrones reflejan cómo distintos grupos de pacientes podrían responder de forma diversa a condiciones específicas o a estímulos externos, como el hábito de fumar, estilo de vida, administración de fármacos, o el avance de enfermedades como el cáncer o los tumores.
+
+Un caso notable es el grupo de pacientes ubicado en el extremo derecho del heatmap, que incluye a los pacientes 31, 32, 40, 57, 58 y 59. Estos pacientes presentan una expresión elevada de genes relacionados con la respuesta inmunológica, lo cual se destaca en tonos de color rojo y amarillo en el mapa de calor. Este perfil de alta expresión en genes inmunológicos, por ejemplo, sugiere que este grupo podría estar experimentando una activación inmune activa, posiblemente como resultado de una respuesta a tratamientos inmunomoduladores o debido a un estado de salud particular que promueve una mayor actividad inmunológica. Sin embargo, los pacientes ubicados en el centro o en el lado izquierdo del heatmap, que también poseen estos genes, muestran niveles de expresión considerablemente más bajos, lo cual sugiere que estos grupos podrían tener una respuesta inmunológica menos activa o estar en una fase diferente de la enfermedad o del tratamiento.
+
+Este clúster de pacientes con alta expresión genética no solo destaca la homogeneidad o henterogeneidad en los patrones de expresión entre ellos, sino que también abre la posibilidad de identificar patrones biológicos compartidos con potenciales implicaciones clínicas. La observación de estos patrones podría indicar que ciertos tratamientos podrían ser más efectivos en este subgrupo de pacientes, lo que lleva a enfoques personalizados en terapias o farmacos. Por ejemplo, un tratamiento inmunomodulador podría ser más adecuado y efectivo para este clúster, mientras que otro tratamiento podría ser más beneficioso para los pacientes de los clústeres con menor expresión inmunológica. Por ende, la identificación de estos patrones específicos entre subgrupos permite adaptar las terapias a las características moleculares de cada grupo, promoviendo un enfoque de medicina personalizada. Esto podría mejorar la eficacia de los tratamientos y reducir efectos secundarios al adaptar las intervenciones a las necesidades biológicas de cada paciente o clúster identificado en el análisis génico.
+
+**Patrones de Expresión entre Genes**
+
+En el eje Y, también se observan agrupaciones de genes con patrones de expresión similares, lo que sugiere una regulación común o participación en vías metabólicas relacionadas. Los genes en la zona central del heatmap muestran un perfil de expresión predominantemente bajo en la mayoría de los pacientes, representados en tonos oscuros. Este patrón podría indicar que estos genes tienen una función basal mínima o se expresan sólo en situaciones específicas.
+
+Por otro lado, en la sección derecha del heatmap, algunos genes muestran una mayor variabilidad en su expresión entre pacientes.En el lado derecho, un grupo de pacientes muestra niveles de expresión elevados en ciertos genes clave, visibles en tonos rojos y amarillos.Entre estos genes, **AQ_FOXP3, AQ_CCL2 y AQ_JAK3** presentan niveles de expresión extremadamente altos, resaltados en color rojo, mientras que genes como **AQ_MAPK1, AQ_PDCD1, AQ_TGFB1 y AQ_IL6** muestran una expresión medianamente alta en tonos amarillos. Estos patrones elevados podrían estar relacionados con funciones inmunológicas y de señalización celular, posiblemente reflejando una respuesta específica a tratamientos como los tratamientos A y B. Además, genes como **AQ_FOXO3 y AQ_GPX1** muestran una expresión intermedia-alta (colores que varían de amarillo a rojo), lo cual sugiere una activación moderada en ciertos pacientes. En contraste, otros pacientes tienen perfiles de expresión considerablemente más bajos o uniformes en estos mismos genes, lo que podría indicar diferencias en sus respuestas fisiológicas, potencialmente asociadas con variaciones en los estadios de sus enfermedades o con diferencias genéticas inherentes.
+
+En general, los patrones diferenciados de expresión genética entre grupos de genes y pacientes permiten inferir que algunos genes podrían estar co-regulados o controlados por factores comunes, como factores de transcripción, moléculas de señalización o modificaciones epigenéticas. Estos patrones pueden ser fundamentales para entender los mecanismos subyacentes en las respuestas celulares observadas en el cancer en diferentes zonas anatomicas y podrían servir como bases para identificar nuevos objetivos terapéuticos. La alta expresión de ciertos genes en subgrupos de pacientes podría señalar funciones críticas en la respuesta a tratamientos específicos o en la progresión de la enfermedad, haciendo de estos genes potenciales marcadores.

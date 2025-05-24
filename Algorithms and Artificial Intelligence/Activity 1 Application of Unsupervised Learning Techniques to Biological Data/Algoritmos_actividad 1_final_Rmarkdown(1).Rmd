@@ -1,0 +1,1262 @@
+---
+title: "Actividad 1. Algoritmos e Inteligencia artificial"
+author: "Xose Manuel Tomé Castro"
+date: "2024-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Ambiente y librerías de trabajo.
+
+### 1.1**¿Qué librerías han sido necesarias para llevar a cabo la implementación de cada uno de los métodos de aprendizaje no supervisado? Explica el rol de los argumentos de las funciones que has utilizado en cada método de reducción de dimensionalidad.**
+
+#### Librerías necesarias:
+
+Se han utilizado las siguientes librerías en R para implementar los métodos de aprendizaje no supervisado:
+
+-   Rdimtools: Ofrece múltiples técnicas de reducción de dimensionalidad, como PCA, t-SNE, UMAP, LLE y Laplacian Eigenmaps.
+
+-   umap: Implementación de UMAP para analizar datos de alta dimensionalidad.
+
+-   stats: Para técnicas como PCA (usando prcomp) y escalado de datos (scale).
+
+-   ggplot2: Para la visualización gráfica de los resultados de reducción de dimensionalidad.
+
+-   cluster: Para métodos de clustering jerárquico.
+
+-   factoextra: Para visualización de clustering jerárquico y k-means.
+
+-   Rtsne: Implementación de t-SNE para explorar agrupaciones en datos no lineales.
+
+-   RDRToolbox Utilizado específicamente para aplicar el método Isomap.
+
+-   gridExtra Permite organizar y mostrar múltiples gráficos en una sola disposición.
+
+-   plotly Facilita la creación de visualizaciones interactivas en 2D y 3D, particularmente útiles para t-SNE y UMAP.
+
+-   FNN Proporciona cálculos rápidos de los vecinos más cercanos, necesarios para métodos como t-SNE, UMAP y LLE.
+
+#### 1.2.Explicación de los argumentos clave utilizados en los métodos de reducción de dimensionalidad y clustering
+
+##### **PCA (prcomp)**
+
+-   **x**: Matriz de datos sobre la cual se realiza el análisis.
+-   **scale.**: Argumento booleano para determinar si se deben escalar las variables antes del análisis. Esto es útil para normalizar las variables con rangos distintos.
+
+##### **t-SNE (Rtsne)**
+
+-   **X**: Matriz de datos de entrada.
+-   **dims**: Dimensionalidad del espacio proyectado (típicamente 2 o 3).
+-   **perplexity**: Controla el balance entre la atención a los puntos cercanos y lejanos en la proyección. Usualmente entre 5 y 50.
+-   **theta**: Parámetro de suavizado para acelerar el cálculo, con valores entre 0 y 1 (un menor valor aumenta la precisión).
+-   **pca**: Booleano que indica si debe aplicarse PCA previo al cálculo de t-SNE.
+-   **get.knnx**: Método para encontrar vecinos más cercanos.
+-   **reduced_data**: Resultado de la proyección en baja dimensionalidad.
+-   **conservation_rate**: Evalúa qué tanto conserva la estructura original.
+
+##### **UMAP (umap)**
+
+-   **n_neighbors**: Define cuántos vecinos se consideran al construir el grafo de similitudes locales.
+-   **n_components**: Número de dimensiones en las que se proyectan los datos.
+-   **min_dist**: Controla la distancia mínima entre puntos en la representación proyectada.
+-   **local_connectivity**: Nivel de conectividad local para reforzar relaciones vecinas.
+
+##### **LLE (do.lle)**
+
+-   **X**: Matriz de datos de entrada.
+-   **k**: Número de vecinos para construir la reconstrucción local.
+-   **dim**: Número de dimensiones objetivo tras la reducción.
+
+##### **Isomap**
+
+-   **dims_range**: Rango de dimensiones exploradas para evaluar la proyección óptima (ej., de 1 a 10).
+-   **k_neighbors**: Número de vecinos considerados en la construcción del grafo geodésico.
+-   **plotResiduals**: Visualización de los residuos para determinar la calidad de la proyección.
+-   **k**: Número de dimensiones objetivo.
+
+##### **Laplacian Eigenmaps (LE, do.lapeig)**
+
+-   **n_neighbors**: Número de vecinos usados para construir la matriz de afinidad.
+-   **X**: Matriz de datos de entrada.
+-   **type**: Define el esquema de cálculo de pesos (ej., vecinos más cercanos o distancias).
+-   **Ndim**: Dimensionalidad de la proyección.
+-   **weighted**: Booleano para decidir si se usan pesos en el cálculo (FALSE implica igualdad entre vecinos).
+
+##### **MDS (cmdscale)**
+
+-   **dist**: Matriz de distancias entre pares de puntos.
+-   **eig**: Booleano que indica si se devuelven los valores propios.
+-   **k**: Número de dimensiones en las que se proyectan los datos.
+-   **x.ret**: Devuelve los vectores propios usados en la proyección.
+
+##### **ICA (ica)**
+
+-   **n.comp:** Número de componentes independientes a extraer. Esto determina cuántas señales subyacentes independientes se desean identificar.
+-   
+
+##### **Clustering no jerárquico (K-means)**
+
+-   **fviz_nbclust**: Herramienta para determinar el número óptimo de clústeres.
+-   **kmeans**: Función base para realizar el clustering.
+-   **iter.max**: Número máximo de iteraciones permitidas.
+-   **nstart**: Número de inicializaciones aleatorias para evitar soluciones subóptimas.
+-   **method**: Define el criterio usado para optimizar (ej., "Hartigan-Wong").
+-   **centers**: Número de centros o clústeres especificados.
+-   **Geom**: Tipo de geometría para la visualización.
+-   **Xlab/Ylab**: Etiquetas para los ejes.
+
+##### **Clustering jerárquico divisivo (DIANA)**
+
+-   **fviz_dend()**: Función para visualizar el dendrograma resultante.
+-   **diana()**: Implementación del clustering jerárquico divisivo.
+-   **metric**: Métrica de distancia usada (ej., euclidiana, Manhattan).
+-   **stand**: Escalado previo de los datos para estandarizar las variables.
+-   **grid.arrange**: Disposición de múltiples gráficos en una cuadrícula.
+-   **Palette**: Define la paleta de colores para la visualización.
+-   **Xlab/Ylab**: Etiquetas para los ejes.
+-   **K**: Número de clústeres deseados.
+-   **cex**: Tamaño del texto en el dendrograma.
+-   **main**: Título del gráfico.
+
+Estas configuraciones y argumentos han sido fundamentales para aplicar correctamente los métodos y garantizar resultados significativos en el análisis de datos.
+
+## 2. Procesamiento de los datos.
+
+### 2.1**¿Qué problemas has detectado en el conjunto de datos que te han sido proporcionados? ¿Cómo los has solucionado?**
+
+El conjunto de datos proporcionado presentó varios problemas que requirieron de varios comandos y programas para su solucion. En primer lugar, las tablas de datos estaban separadas, conteniendo por un lado las etiquetas, por otro los nombres de los genes, y en una tercera tabla las expresiones genéticas. Esto hizo necesario integrarlas en una única estructura unificada mediante funciones como `merge`, `cbind`, o `rbind`, asegurando que las dimensiones fueran consistentes. Además, el formato de los datos incluía decimales representados con comas en lugar de puntos, lo que dificultaba su lectura en R. Para solucionar esto, se realizó una conversión previa utilizando **Notepad++**, reemplazando las comas por puntos, lo que permitió interpretar correctamente los valores numéricos. Otro desafío fue la organización de filas y columnas, que en algunos casos necesitó ser ajustada mediante la función `t()` para transponer los datos y facilitar su integración. Asimismo, algunos valores en las tablas eran ceros, lo que generaba problemas en ciertos algoritmos sensibles a estos valores. Para resolverlo, se optó por eliminar filas o columnas con demasiados ceros cuando estos no aportaban información útil, o por reemplazar los ceros con valores pequeños (por ejemplo, 1e-6) en algoritmos donde era necesario mantener la matriz completa. Finalmente, la alta dimensionalidad de los datos supuso un reto adicional, ya que complicaba el uso eficiente de algunos algoritmos.
+
+## 3. Métodos no supervisados.
+
+### 3.1.**¿Cuál es el motivo por el cual has seleccionado estas técnicas de reducción de dimensionalidad?. ¿Qué aspectos positivos y negativos tienen cada una de las técnicas escogidas?. Comenta para cada caso el resultado de representar gráficamente las primeras dos variables de cada uno de los métodos. ¿Qué se observa? ¿Tiene sentido biológico? Razona tu respuesta**
+
+Primeramente realicé un preprocesamiento de los datos y verificación de los mismo para el posterior análisis. Cambié el archivo de classes y gene_expression con comas en vez de puntos con notepad++. Además en classes, modifiqué los titulos por muestras y cáncer. Adjunto los archivos modificados en el documento (se deben seleccionar desde el ordenador). Pensé que así sería más fácil.
+
+1º) classes_comas
+
+2º) column_names
+
+3º) gene_expression_comas
+
+4º) Tabla_final_montada
+
+5º) classes_comas
+
+#### 3.2.Modificación de tablas y archivos proporcionados
+
+```{r}
+# Cargar los archivos CSV
+clases_dataset_crudo <- read.csv(file.choose()) # Cargo el archivo de classes
+ 
+column_names_crudo <- read.csv(file.choose()) # Cargo el archivo de column_names
+
+expresion_crudo <- read.csv(file.choose(), header = FALSE) # Cargo el archivo de gene expression
+
+# Transponer los datos de los genes
+column_names_crudo <- t(column_names_crudo)
+
+# Eliminar la segunda fila de lista de genes
+column_names_crudo <- column_names_crudo[-2, ]
+
+# Verificar que el número de columnas coincida
+if (ncol(expresion_crudo) == length(column_names_crudo)) {
+  # Asignar los nombres del vector como nombres de las columnas del dataframe
+  colnames(expresion_crudo) <- column_names_crudo
+} else {
+  stop("El número de columnas en 'Expresion_crudo' no coincide con la longitud de 'column_names'")
+}
+
+# Unir el dataframe de clases a expresion genética y genes
+tabla_montada <- cbind(clases_dataset_crudo, expresion_crudo)
+
+# Hice una tabla con todo montado para poder analizarla más adelante, así podré realizar mejor el razonamiento biológico. Está tabla se usará para los ejercicios posteriores, obteniendose los dataframes y matrices correspondientes.
+
+write.csv(tabla_montada, "C:/Users/resta/Desktop/UNIR 1 cuatrimestre asignaturas/Temas Algoritmos e Inteligencia Artificial/actividad 1/markdown/Tabla_final_montada", row.names = FALSE)
+
+```
+
+#### 3.3.Cargar los archivos y preprocesamiento de dataframes y matrices para los algoritmos
+
+Creo los dataframes y matrices para los próximos ejercicios. También verifico que no haya ningún valor faltante o algún valor infinito.
+
+```{r}
+tabla_montada <- read.csv(file.choose())
+
+# Crear un nuevo dataframe a partir de la segunda columna
+df_genes <- tabla_montada[, 3:ncol(tabla_montada)]
+
+labels <- read.csv(file.choose(), header = TRUE)  # Cargar archivo de classes (con etiquetas de cáncer)
+
+# Validar que las etiquetas contengan la columna 'cancer'
+if (!"cancer" %in% colnames(labels)) {
+  stop("El archivo de etiquetas no contiene una columna llamada 'cáncer'. Verifica los datos.")
+}
+
+# Extraer las etiquetas
+class_labels <- labels$cancer
+
+# Validar que todas las columnas de df_genes sean numéricas
+if (!all(sapply(df_genes, is.numeric))) {
+  stop("El dataframe de genes contiene valores no numéricos. Revisa y corrige los datos.")
+}
+
+# Convertir df_genes a matriz numérica
+df_genes_matrix <- as.matrix(df_genes)  
+
+# Verificar valores faltantes en los datos
+if (any(is.na(df_genes_matrix))) {
+  stop("Los datos contienen valores faltantes (NA). Limpia los datos antes de continuar.")
+}
+```
+
+### 3.4.Cargar dlos archivos y preprocesamiento de dataframes y matrices para los clusters
+
+Reviso los datos proporcionados. Veo que hay NaN entre los datos, y los reemplazo por 0, eliminando MIER3 ZCCHC12 RPL22L1 de las columnas. Hago esto porque cuando aplicaba los clusters no me dejaba realizad los analaisis, incluso cuando truncaba los numeros cercanos a 0 (e.g, 1e-37). Opté por eliminar para el analisis de clusters estos 3 genes (sus filas con 0)
+
+```{r, results='hide'}
+df_genes_scale <- scale(df_genes)  # Normalización z-score
+
+# Verificar si hay Inf o NaN en los datos escalados
+any(is.infinite(df_genes_scale))  # Revisa si hay Inf
+any(is.nan(df_genes_scale))       # Revisa si hay NaN
+
+# Reemplazar los Inf o NaN con 0 o con la media de la columna
+df_genes_scale[is.nan(df_genes_scale)] <- 0      # Reemplazo NaN por 0
+
+# Verificar las estadísticas de las columnas antes de la normalización
+summary(df_genes)  # Ver estadística descriptiva antes de la normalización
+
+# Calcular la varianza de cada columna
+varianzas <- apply(df_genes_scale, 2, var)
+
+# Ver qué columnas tienen varianza cero
+varianzas[varianzas == 0]
+
+# Eliminar las columnas con varianza cero
+df_genes_scale <- df_genes_scale[, varianzas != 0]
+```
+
+#### 3.5.Cargar las librerías
+
+```{r, results='hide', message=FALSE}
+library(stats)       # Contiene funciones básicas para análisis multivariado, como PCA (prcomp), MDS (cmdscale) y escalado (scale).
+library(ggplot2)     # Paquete para crear visualizaciones gráficas, útil para representar resultados en 2D o 3D tras la reducción de dimensionalidad.
+library(Rtsne)       # Implementación del método t-SNE, ideal para explorar relaciones no lineales en los datos y visualizarlos en espacios de baja dimensión.
+library(FNN)         # Proporciona herramientas para cálculos rápidos de vecinos más cercanos (KNN), necesarias para t-SNE, UMAP, Isomap, entre otros.
+library(plotly)      # Permite crear gráficos interactivos en 2D y 3D, facilitando la exploración de los datos proyectados o clusters.
+library(umap)        # Implementa el algoritmo UMAP, eficiente para la reducción de dimensionalidad mientras preserva estructuras globales y locales.
+library(Rdimtools)   # Ofrece múltiples métodos de reducción de dimensionalidad, como LLE (Locally Linear Embedding) y Laplacian Eigenmaps.
+library(RDRToolbox)  # Implementación de Isomap y otros métodos de reducción de dimensionalidad basados en relaciones no lineales.
+library(fastICA)     # Para realizar Análisis de Componentes Independientes (ICA), útil para separar señales en datos multivariados.
+library(factoextra)  # Herramientas para calcular y visualizar resultados de clustering (k-means, clustering jerárquico) y análisis multivariado.
+library(cluster)     # Incluye métodos de clustering como k-means, clustering jerárquico (agnes), y divisivo (DIANA).
+library(gridExtra)   # Facilita la creación de cuadrículas para organizar gráficos generados por diferentes métodos en una única visualización.
+library (ica)
+```
+
+#### 3.6.Algoritmos de reducción de dimensionalidad
+
+##### **3.6.1. PCA (Análisis de Componentes Principales)**
+
+Antes de realizar el análasis con PCA calculo las varianzas. La varianza explicada muestra qué tan importante es cada componente individualmente. En cambio, la varianza explicada acumulada ayuda a decidir cuántos componentes son necesarios para capturar la mayor parte de la variabilidad en los datos.
+
+```{r}
+# Calcular de componentes principales con la funcion prcomp
+pca.results <- prcomp(df_genes, center=TRUE, scale=FALSE)
+
+# Resultado de las componentes principales
+pca.df <- data.frame(pca.results$x)
+
+# Varianza (cuadrado de la desviacion tipica)
+varianzas <- pca.results$sdev^2
+
+# Total de la varianza de los datos
+total.varianza <- sum(varianzas)
+
+# Varianza explicada por cada componente principal
+varianza.explicada <- varianzas/total.varianza
+
+# Calcular la varianza acumulada 
+varianza.acumulada <- cumsum(varianza.explicada)
+
+# Tomar el numero de componentes principales que explican el 90% de la varianza
+n.pc <- min(which(varianza.acumulada > 0.9))
+
+```
+
+##### 3.6.1.1. Verificación de cuántas variables explican el porcentaje y la variabilidad de los genes
+
+```{r, results='hide'}
+# Calcular la varianza acumulada
+varianza.acumulada <- cumsum(varianza.explicada)
+
+# Mostrar la proporción acumulada
+print(varianza.acumulada)
+
+```
+
+##### 3.6.1.2. Gráfico de la PCA
+
+```{r}
+
+# Etiquetas de los ejes del gráfico
+x_label <- paste0(paste('PC1', round(varianza.explicada[1] * 100, 2)), '%')
+y_label <- paste0(paste('PC2', round(varianza.explicada[2] * 100, 2)), '%')
+
+# Representación gráfica de las primeras dos componentes principales respecto a los datos
+ggplot(pca.df, aes(x=PC1, y=PC2, color=labels$cancer)) +
+  geom_point(size=3) +
+  scale_color_manual(values=c('red', 'blue', 'green', 'orange', 'purple')) +
+  labs(title='PCA RNA-seq genes', x=x_label, y=y_label, color='Grupo') +
+  theme_classic() +
+  theme(panel.grid.major = element_line(color="black"), panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray95"), plot.title = element_text(hjust = 0.5))
+
+
+```
+
+##### 3.6.1.3. Análisis del PCA
+
+##### Mótivo de Elección del PCA
+
+He seleccionado el Análisis de Componentes Principales (PCA) buscando una combinacion lineal de las variables objeto de estudio maximizando la varianza de los datos, y que minimice la correlacion entre ellas. Además esta técnica se ordena en función de su varianza, es decir, que se ordena en funcion de cuánto se separan o desvían los valores individuales de un conjunto respecto a su media.Creo que es interesante ya que dos componentes pueden reflejar mas de una variable a la vez.
+
+------------------------------------------------------------------------
+
+##### Aspectos Positivos del PCA
+
+El **PCA** (Análisis de Componentes Principales) elimina las correlaciones entre las variables, aumentando la independencia de los datos. Esto es particularmente útil en los siguientes casos:
+
+-   Cuando se busca entrenar un modelo utilizando componentes que capturen la mayor variabilidad de los datos, ayudando a prevenir el **overfitting**.\
+
+-   Para lograr una visualización clara y precisa de los datos, especialmente en problemas de alta dimensionalidad.
+
+Además, el PCA es especialmente eficaz en conjuntos de datos donde las variables presentan **altas correlaciones**, ya que agrupa su variabilidad en componentes principales independientes.
+
+------------------------------------------------------------------------
+
+##### Limitaciones de la PCA
+
+-   El **PCA** se aplica principalmente a conjuntos de datos cuyas variables están **linealmente correlacionadas**, es decir, mantienen una relación proporcional constante. sto significa que, cuando una variable aumenta (o disminuye), la otra también lo hace en una proporción constante.
+
+-   Es necesario realizar procesos de **estandarización** previos para garantizar que las variables tengan escalas comparables y permitir una correcta generación de las componentes principales.
+
+-   La **selección de componentes principales** debe realizarse cuidadosamente, eligiendo aquellas que expliquen la mayor proporción de la variabilidad, descartando componentes que aporten poca información útil.
+
+------------------------------------------------------------------------
+
+##### Análisis del estudio
+
+La PCA para este estudio ha logrado clasificar 5 grupos de genes que contribuyen significativamente a la varianza global, sin embargo, en este caso particular, las dos primeras componentes principales (PC1 y PC2) explican solo el 28.06% de la variabilidad total, lo que indica que no capturan una proporción suficiente de la varianza para identificar patrones claros. Se necesitaría 34 componentes para poder explicar el 75% de los datos de conjunto. Esto se refleja en las nubes de puntos generadas, que muestran una superposición significativa entre las clases, dificultando la separación entre grupos, salvo en el caso de **AGH**, que parece estar mejor definido.
+
+-   Los dos primeros componentes principales no capturan una proporción significativa de la variación en los datos. Esto indica que la estructura biológica de los datos es compleja y multifactorial, y no se puede resumir fácilmente en un espacio de baja dimensionalidad.
+
+-   Esto puede reflejar que no hay genes que sean marcadores exclusivos y dominantes para todos los cánceres en tu análisis.
+
+-   Algunos tipos de cáncer podrían estar biológicamente relacionados o tener características similares debido a su origen tisular o molecular.
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_PCA.png", width = 12, height = 9)
+
+```
+
+##### **3.6.2. t-SNE (Stochastic Neighbor Embedding)**
+
+Establezco una semilla para asegurar la reproducibilidad de los resultados. Después, calculo la **tasa de conservación** para evaluar cuán bien se mantienen las relaciones de cercanía entre los puntos en el espacio original (de alta dimensión) y en el espacio reducido (2D o 3D). Esto lo hago mediante la función `conservation_rate`, que compara los **k vecinos más cercanos** de cada punto en ambos espacios (original y reducido), calculando cuántos de esos vecinos coinciden en ambos. El resultado es un valor que me indica qué tan bien el algoritmo t-SNE preserva las relaciones de vecindad durante la reducción de dimensionalidad, donde un valor cercano a 1 sugiere que la reducción ha conservado bien las estructuras originales.
+
+```{r}
+# Ingresar la semilla para hacer el algoritmo replicable
+set.seed(1234)
+
+# Reducción de dimensionalidad con t-SNE en 2D
+tsne_2d <- Rtsne(X = df_genes, perplexity = 15, dims = 2, check_duplicates = FALSE, theta = 0.2, pca = TRUE)
+tsne_result_2d <- data.frame(tsne_2d$Y)
+
+# Reducción de dimensionalidad con t-SNE en 3D
+tsne_3d <- Rtsne(X = df_genes, perplexity = 15, dims = 3, check_duplicates = FALSE, theta = 0.2, pca = TRUE)
+tsne_result_3d <- data.frame(tsne_3d$Y)
+
+# Número de vecinos más cercanos a considerar
+k <- 10
+
+# Función para calcular la tasa de conservación de los k-vecinos más cercanos
+conservation_rate <- function(original_data, reduced_data, k) {
+  original_nn <- get.knnx(data = original_data, query = original_data, k = k)
+  reduced_nn <- get.knnx(data = reduced_data, query = reduced_data, k = k)
+  
+  overlap_count <- sapply(1:nrow(original_data), function(i) {
+    length(intersect(original_nn$nn.index[i, ], reduced_nn$nn.index[i, ]))
+  })
+  
+  mean(overlap_count) / k
+}
+
+```
+
+##### 3.6.2.1. Cálculo de nivel de conservacion de los de los plots
+
+Calculo la tasa de conservación para dos configuraciones: 2D y 3D, utilizando un valor de **k** para definir cuántos vecinos considerar. Imprimo el resultado de la tasa de conservación para cada caso, lo que me indica cuán bien se conservan las relaciones de proximidad de los puntos en el espacio reducido respecto al espacio original. Un valor cercano a 1 sugiere una conservación alta, mientras que valores más bajos indican una menor preservación de la estructura en la reducción dimensional.
+
+```{r}
+# Calcular la tasa de conservación en 2D
+rate_2d <- conservation_rate(original_data = df_genes, reduced_data = tsne_result_2d, k = k)
+print(paste("La tasa de conservación de los", k, "vecinos más cercanos en 2D es:", rate_2d))
+
+# Calcular la tasa de conservación en 3D
+rate_3d <- conservation_rate(original_data = df_genes, reduced_data = tsne_result_3d, k = k)
+print(paste("La tasa de conservación de los", k, "vecinos más cercanos en 3D es:", rate_3d))
+```
+
+##### 3.6.2.2. Graficar 2D
+
+```{r}
+# Graficar los resultados de t-SNE en 2D
+ggplot(tsne_result_2d, aes(x = X1, y = X2, color = labels$cancer)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +
+  labs(title = "Método t-SNE (2D) RNA-seq genes", x = "Dim 1", y = "Dim 2", color = "Grupo") +
+  theme_classic() +
+  theme(panel.grid.major = element_line(color = "black"), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "grey95"), 
+        plot.title = element_text(hjust = 0.5))
+```
+
+##### 3.6.2.3.Graficar 3D
+
+```{r}
+# Añadir etiquetas y convertir los resultados de t-SNE 3D a un marco de datos
+tsne_result_3d$label <- labels$cancer  # Añadimos las etiquetas
+colnames(tsne_result_3d) <- c("X1", "X2", "X3", "label")  # Nombramos las columnas
+
+# Crear un gráfico 3D interactivo
+plot_ly(tsne_result_3d, 
+        x = ~X1, 
+        y = ~X2, 
+        z = ~X3, 
+        color = ~label, 
+        colors = c("red", "blue", "green", "orange", "purple"),  # Especifica los colores según tus grupos
+        type = "scatter3d", 
+        mode = "markers") %>%
+  layout(
+    title = "Método t-SNE (3D)",
+    scene = list(
+      xaxis = list(title = "Dim 1"),
+      yaxis = list(title = "Dim 2"),
+      zaxis = list(title = "Dim 3")
+    )
+  )
+```
+
+##### 3.6.2.4.Análisis del t-sne
+
+##### Mótivo de Elección del t-SNE
+
+Elegí el t-SNE (t-Distributed Stochastic Neighbor Embedding) porque es muy eficaz para reducir la dimensionalidad de los datos y, al mismo tiempo, mantener las relaciones locales entre los puntos. En el caso de los genes en cáncer de mama, las interacciones son bastante complejas y no siempre siguen un patrón lineal.
+
+------------------------------------------------------------------------
+
+##### Aspectos Positivos del t-SNE
+
+-   T-SNE se destaca frente a otras técnicas debido a su capacidad para manejar datos no lineales de manera eficiente, ya que captura adecuadamente las complejas relaciones polinómicas entre las características.
+
+-   Además, preserva eficazmente la localidad de los datos y, al mismo tiempo, revela parte de la estructura global importante en un espacio de baja dimensión.
+
+-   En general, es una herramienta muy efectiva para identificar la estructura subyacente en los datos, especialmente en lo que respecta a la representación visual.
+
+------------------------------------------------------------------------
+
+##### Limitaciones t-SNE
+
+-   El componente estocástico de T-SNE lo convierte en un método no determinista, lo que implica que introduce un elemento de azar, afectando su reproducibilidad: al ejecutar el mismo código en dos ocasiones, se obtendrán resultados ligeramente diferentes.
+
+-   Si bien T-SNE es eficiente en conjuntos de datos pequeños, su complejidad cuadrática en términos de tiempo y espacio lo hace computacionalmente costoso cuando se aplica a conjuntos de datos grandes
+
+-   Además, el rendimiento de T-SNE al reducir datos a más de tres dimensiones no es tan claro, lo que hace que esta técnica sea más adecuada para la visualización de datos en baja dimensionalidad.
+
+-   Por lo tanto, aunque es útil para la exploración visual de estructuras en los datos, su uso para análisis a gran escala o en dimensiones mayores debería ser considerado con precaución.
+
+------------------------------------------------------------------------
+
+##### Análisis T-SNE
+
+Los resultado muestran una separacuion bastabnte buena entre los 4 tipos de canceres, bien delimitado y bien separados entre ellos. Estos resultados indican que cada tipo de cáncer tiene un patrón único de expresión génica, como si cada uno tuviera su "huella digital molecular". Esto refleja que los procesos y vías biológicas que los caracterizan son diferentes entre sí, como el modo en que crecen, se desarrollan o interactúan con su entorno. La separación clara entre los grupos sugiere que estos genes podrían servir para entender mejor lo que hace único a cada tipo de cáncer.
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_t-SNE.png", width = 12, height = 9)
+
+```
+
+#### **3.6.3. UMAP (Uniform Manifold Approximation and Projection)**
+
+El código especifica 2 componentes principales y un número de vecinos ajustado al tamaño de los datos (20% del total de filas). Además, se ajustan parámetros como la distancia mínima entre los puntos y la conectividad local. Los resultados de la reducción se almacenan en un `umap.df` y se verifica el nombre de las columnas de los resultados para asegurar que la estructura de los datos sea adecuada.
+
+```{r, results='hide'}
+# Aplicar UMAP para reducción de dimensionalidad
+umap.results <- umap(df_genes_matrix, 
+                     n_neighbors = 0.2 * nrow(df_genes_matrix), 
+                     n_components = 2,
+                     min_dist = 0.1, 
+                     local_connectivity = 1)
+
+# Crear el dadtaframe umap.df con los resultados de la reducción
+umap.df <- data.frame(umap.results$layout)
+
+# Verificar los nombres de las columnas de 'umap.df'
+colnames(umap.df)  
+
+```
+
+##### 3.6.3.1. Graficar 2D
+
+```{r}
+# Graficar los resultados
+ggplot(umap.df, aes(x = X1, y = X2, color = class_labels)) +  # Asegúrate de usar los nombres correctos
+  geom_point(size = 3) +  # Tamaño de los puntos
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +  # Colores para los grupos
+  labs(title = " Método UMAP RNA-seq genes",
+       x = "Componente 1", 
+       y = "Componente 2", 
+       color = "Grupo") +  # Título y etiquetas
+  theme_classic() +  # Estilo de tema clásico
+  theme(panel.grid.major = element_line(color = "black"), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_rect(fill = "grey95"),  # Fondo personalizado
+        plot.title = element_text(hjust = 0.5))  # Centrar título
+
+```
+
+##### 3.6.3.2. Análisis del UMAP
+
+##### Móitivo de Elección del UMAP
+
+Elegí el UMAP (Uniform Manifold Approximation and Projection) porque asume que los datos tienen una distribución uniforme en un espacio topológico, lo que permite proyectarlos en una dimensión más baja sin perder mucha información. Esta capacidad para capturar tanto las relaciones locales como globales entre las muestras también lo hace bastabte interesante.
+
+------------------------------------------------------------------------
+
+##### Aspectos Positivos del UMAP
+
+-   Preservación tanto de relaciones locales como globales,Esto es fundamental cuando se exploran datos complejos, ya que permite identificar no solo grupos locales de genes que podrían estar relacionados funcionalmente, sino también las relaciones globales entre diferentes grupos de genes.
+
+------------------------------------------------------------------------
+
+##### Limitaciones UMAP
+
+-   UMAP cuenta con numerosos parámetros "ajustables", lo que genera una gran cantidad de combinaciones posibles, lo que puede hacer que encontrar la proyección óptima sea un desafío.
+
+-   A pesar de ser computacionalmente más eficiente que otros métodos, como el t-SNE, su costo aún depende en gran medida de los parámetros seleccionados.
+
+-   Aunque tiene un componente estocástico, las ejecuciones repetidas de este algoritmo suelen producir resultados casi idénticos.
+
+------------------------------------------------------------------------
+
+##### Análisis del UMAP
+
+Los resultados obtenidos con UMAP sugieren que los diferentes grupos de genes tienen patrones de expresión que se agrupan de manera coherente, lo que indica que existen relaciones claras entre los genes dentro de cada grupo. Al igual que el t-SNE, este método puede ser bueno para seguir posteriores estudios de estos cánceres, ya que arrojan subgrupos bien diferenciados .
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_UMAP.png", width = 12, height = 9)
+
+```
+
+#### **3.6.4. LLE (Locally Linear Embedding)**
+
+Especifico que el resultado será de 2 dimensiones y utilizo 130 vecinos más cercanos (k = 130). Los resultados de la reducción se convierten en un `lle_df`, al que luego le añado las etiquetas de clase (subtipos de cáncer) como una nueva columna, permitiendo así asociar cada punto reducido con su respectiva categoría.
+
+
+```{r, results='hide'}
+lle_results <- LLE(df_genes_matrix, dim = 2, k = 130)
+
+# Convertir los resultados en un dataframe
+lle_df <- data.frame(lle_results)
+
+# Agregar las etiquetas como una columna al dataframe
+lle_df$Class <- class_labels
+```
+
+#### 3.6.4.1. Graficar
+
+```{r}
+# Graficar la reducción a 2 dimensiones
+ggplot(lle_df, aes(x = X1, y = X2, color = Class)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +
+  labs(title = "Método LLE (2D) RNA-seq genes",
+       x = "Componente 1",
+       y = "Componente 2",
+       color = "Grupo") +
+  theme_classic() +
+  theme(panel.grid.major = element_line(color = "black"),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray95"),
+        plot.title = element_text(hjust = 0.5))
+```
+
+##### 3.6.4.2. Análisis del LLE
+
+##### Mótivo de Elección del LLE
+
+He seleccionado el LLE porque pueden haber estructuras subyacentes de los datos tienen patrones no lineales que son importantes para entender las relaciones entre los genes, preservando la estructura local de los datos, lo que la hace ideal para explorar estas relaciones complejas.
+
+------------------------------------------------------------------------
+
+##### Aspectos Positivos del LLE
+
+-   El LLE es muy eficaz para identificar estructuras no lineales en los datos y mantener las distancias dentro de los vecindarios locales.
+
+-   El LLE conserva de manera efectiva las distancias locales entre los puntos de datos en el espacio original.
+
+-   Solo cuenta con un parámetro libre, k, que representa el número de vecinos más cercanos.
+
+-   El hecho de tener un solo parámetro facilita el ajuste del algoritmo para alcanzar su solución óptima.
+
+------------------------------------------------------------------------
+
+##### Limitaciones LLE
+
+-   LLE tiene una alta dependencia del parámetro `k`, que determina el número de vecinos más cercanos que se considerarán para cada punto. Un valor de `k` pequeño puede llevar a una mejor interpretación local de los datos, pero puede perder la estructura global. Por otro lado, un valor de `k` grande puede diluir las relaciones locales y hacer que el modelo se enfoque más en una representación global de los datos, sacrificando la precisión de las relaciones cercanas.
+
+-   Cuando el número de vecinos supera la dimensión de entrada, pueden generarse proyecciones distorsionadas. Sin embargo, este problema es manejado por el algoritmo LLE modificado, que utiliza múltiples vectores de peso para reconstruir cada punto.
+
+-   El LLE es altamente sensible al ruido y a los valores atípicos (outliers).
+
+-   Debido a que los parámetros de k vecinos más cercanos se seleccionan según las distancias euclidianas entre los puntos, es posible que dos puntos de datos que no pertenezcan al mismo parche localmente lineal se agruparán como si lo estuvieran.
+
+------------------------------------------------------------------------
+
+##### Análisis del LLE
+
+En mi análisis LLE no logró una separación clara de los puntos. Las cinco "nubes" de puntos resultantes estaban muy juntas, lo que hace difícil distinguir entre ellas. Esto sugiere que el LLE podría no ser el mejor método en este caso particular para visualización o interpretación, especialmente cuando los datos no presentan una separación evidente en el espacio de menor dimensión.
+
+La incapacidad para identificar agrupaciones claras limita su utilidad para explorar patrones biológicos significativos, como la identificación detallada de las etiquetas y sus genes.
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_LLE.png", width = 12, height = 9)
+
+```
+
+#### **3.6.5. Isomap**
+
+##### 3.6.5.1. Cálculo de la mejor dimensión
+
+Uso la matriz (`df_genes_matrix`), explorando diferentes números de dimensiones (de 1 a 10) y utilizando 10 vecinos cercanos para construir la proyección. Genero una visualización de los residuos o distorsiones (estrés) durante la reducción de dimensionalidad para evaluar qué número de dimensiones ofrece la mejor representación de los datos. Tras la ejecución de Isomap, selecciono las dos primeras dimensiones proyectadas para su visualización en un gráfico, permitiendo observar la distribución de las muestras en el espacio reducido. La varianza residual se refiere a la diferencia entre las distancias geodésicas en el espacio original y las distancias euclidianas en el espacio proyectado. En términos generales, cuanto menor es la varianza residual, mejor es la representación, ya que indica que las distancias entre los puntos en el espacio proyectado están más alineadas con las distancias en el espacio original.
+
+
+```{r, results='hide'}
+# Configuración de parámetros
+# Definir los parámetros de Isomap
+dims_range <- 1:10   # Número de dimensiones a explorar (de 1 a 10)
+k_neighbors <- 10     # Número de vecinos cercanos, ajustable según el rendimiento computacional
+
+# Ejecutar Isomap
+# Aplicar el algoritmo Isomap a los datos, con el rango de dimensiones de 1 a 10 y k vecinos.
+isomap.results <- Isomap(data = df_genes_matrix, dims = dims_range, k = k_neighbors, plotResiduals = TRUE)
+
+# Verificar si Isomap generó resultados correctamente
+if (length(isomap.results) == 0) {
+  stop("El algoritmo Isomap no ha producido resultados válidos.")
+}
+# Seleccionar las dimensiones 3 y 4 según gráfica varianza residual 
+isomap.df <- data.frame(isomap.results$dim2)
+```
+
+##### 3.6.5.2. Graficar 2 dimensiones
+
+```{r}
+# Graficar los resultados
+ggplot(isomap.df, aes(x = X1, y = X2, color = class_labels)) +
+  geom_point(size = 3) + 
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple", "pink", "yellow", "cyan", "brown", "black")) +
+  labs(
+    title = "Método ISOMAP (2D) (k=10) RNA-seq genes", 
+    x = 'Componente 1', 
+    y = 'Componente 2', 
+    color = "Grupo"
+  ) +
+  theme_classic() +
+  theme(
+    panel.grid.major = element_line(color = "gray90"), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "gray95"), 
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  ) +
+  guides(color = guide_legend(title = "Clasificación"))
+
+```
+
+##### 3.6.5.3. Dimensiones adicionales (3 a 10)
+
+El código utiliza un bucle para generar varias gráficas. Aunque, según la gráfica de varianza residual, las dimensiones 3 y 4 explican la mayor parte de la variabilidad de los datos, me doy cuenta de que los resultados de las diferentes dimensiones son bastante similares entre sí. Esto me indica que, en este caso, las dimensiones adicionales no aportan mucha nueva información, y que las dimensiones 1 y 2 ya son suficientes para representar la estructura subyacente.
+
+```{r}
+# Dimensiones adicionales (de 3 a 10)
+for (dim in 3:length(dims_range)) {
+  # Extraemos las dimensiones correspondientes
+  isomap.df <- data.frame(isomap.results[[paste0("dim", dim)]])
+  
+  # Generar y mostrar el gráfico
+  print(
+    ggplot(isomap.df, aes(x = X1, y = X2, color = class_labels)) + 
+      geom_point(size = 3) +
+      scale_color_manual(values = c("red", "blue", "green", "orange", "purple", "pink", "yellow", "cyan", "brown", "black")) +
+      labs(
+        title = paste("Método ISOMAP (2D) (k=10) RNA-seq genes en", dim, "dimensiones"), 
+        x = paste("Dim", dim-1), 
+        y = paste("Dim", dim),
+        color = "Grupo"
+      ) +
+      theme_classic() +
+      theme(
+        panel.grid.major = element_line(color = "black"), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray95"), 
+        plot.title = element_text(hjust = 0.5)
+      )
+  )
+}
+
+
+```
+
+##### 3.6.5.4. Analisis del ISOMAP
+
+### Mótivo de Elección del Isomap
+
+Isomap preservar las relaciones geodésicas entre puntos en el espacio de alta dimensión a diferencia de centrarse en preservar distancias euclidianas o relaciones locales.La distancia geodésica, que es la distancia más corta entre dos puntos sobre una superficie no plana, es útil cuando los datos tienen una estructura no lineal, como puede ser en este caso, creando nodos entre los puntos vecinos y conectandolos.
+
+------------------------------------------------------------------------
+
+### Aspectos Positivos del Isomap
+
+-Se trata de un método especialmente eficaz para conjuntos de datos cuyas variables mantienen relaciones no lineales.
+
+------------------------------------------------------------------------
+
+### Limitaciones Isomap
+
+-   El proceso de determinar las distancias entre los puntos puede no ser preciso si no hay una suficiente densidad de puntos en el espacio de alta dimensión. En ese caso, las distancias en el espacio de menor dimensión podrían diferir considerablemente de las distancias en el espacio original.
+
+-   En general, encontrar el valor adecuado para el parámetro k, incluso si existe, es bastante difícil. Si el valor de k para los vecinos más cercanos es demasiado pequeño, el grafo podría no estar conectado, y si es demasiado grande, el grafo podría volverse demasiado denso, lo que resulta en distancias incorrectas.
+
+------------------------------------------------------------------------
+
+### Análisis de Isomap
+
+Los resultados mostraron 4 agrupaciones (nubes de puntos), aunque las nubes no se superponían, estaban muy juntas entre sí con ambos métodos. A pesar de la separación aparente, se identificaron dos grupos (CHC y AGH) que se comportaron de manera diferente: en lugar de formar agrupaciones de puntos, estos grupos se representaron como líneas de puntos que no siguieron el mismo patrón que los otros. Esto sugiere que, aunque Isomap fue capaz de identificar algunas agrupaciones, la elección de la dimensión en la proyección puede no haber sido óptima. Esto podría reflejar que estos dos tipos de cáncer comparten características moleculares o biológicas similares, o que sus perfiles genéticos son más homogéneos, lo que impide su clara diferenciación.
+
+Por tanto, la separación de los grupos no fue tan clara como se esperaba y por ende no se puede extraer mucha inforamción de los rasgos biológicos o comportamientos.
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_ISOMAP.png", width = 12, height = 9)
+
+```
+
+#### **3.6.6. Laplacian Eigenmaps (LE)**
+
+Calculo el número de vecinos más cercanos como el 20% del tamaño total de la muestra, lo que facilita la visualización en un espacio reducido. No aplico pesos a los vecinos (`weighted = FALSE`), lo que significa que trato todas las conexiones entre puntos de manera uniforme, sin tener en cuenta su proximidad o similitud. Los resultados del algoritmo los almaceno en un dataframe (`le_df`), al que luego le agrego las etiquetas de clase (`class_labels`) para poder graficar y analizar las relaciones entre los diferentes subtipos de cáncer de mama según la expresión génica.
+
+```{r}
+# Definir el número de vecinos más cercanos como el 20% del tamaño de la muestra
+n_neighbors <- round(0.2 * nrow(df_genes_matrix))  # Calcula el 20% de la muestra
+
+le.results <- do.lapeig(
+  X = df_genes_matrix,
+  type = c("proportion", 0.2),  # Usar el 20% como vecinos
+  Ndim = 2,                     # Reducir a 2 dimensiones para visualización
+  weighted = FALSE              # No aplicar pesos a los vecinos
+)
+
+# Convertir los resultados de LE en un dataframe
+le_df <- data.frame(le.results$Y)
+
+# Agregar las etiquetas al dataframe para graficar
+le_df$Class <- class_labels
+
+```
+
+##### 3.6.6.1. Graficar
+
+```{r}
+# Graficar los datos reducidos con Laplacian Eigenmaps
+ggplot(le_df, aes(x = X1, y = X2, color = Class)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +
+  labs(
+    title = "Método LE (2D) RNA-seq genes",
+    x = "Componente 1",
+    y = "Componente 2",
+    color = "Grupo"
+  ) +
+  theme_classic() +
+  theme(
+    panel.grid.major = element_line(color = "black"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "gray95"),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+
+##### 3.6.6.2. Analisis del LE
+
+##### Mótivo de Elección del Laplacian Eigenmaps (LE)
+
+Laplacian Eigenmaps (LE) porque puede preservar las relaciones locales a través de la teoría de grafos. Este enfoque es especialmente útil para puntos cercanos (en este caso, las muestras de genes o grupos de genes) ya que tienden a compartir características similares o incluso a pertenecer a la misma clase.
+
+------------------------------------------------------------------------
+
+##### Aspectos Positivos del Laplacian Eigenmaps (LE)
+
+-   Es computacionalmente eficiente para grafos con vecindarios dispersos, lo que facilita su escalabilidad en conjuntos de datos grandes.
+
+-   Gracias a su capacidad para preservar la localidad, es relativamente robusto frente al ruido y los valores atípicos.
+
+------------------------------------------------------------------------
+
+##### Limitaciones Laplacian Eigenmaps (LE)
+
+-   La efectividad de LE depende en gran medida de los parámetros seleccionados, como el número de vecinos (`n_neighbors`) y el tipo de peso utilizado en los cálculos. El ajuste de estos parámetros puede ser complejo y no siempre evidente. Un valor incorrecto de `n_neighbors` o un peso mal elegido puede distorsionar los resultados, haciendo que las relaciones locales entre los datos no se preserven correctamente.
+
+------------------------------------------------------------------------
+
+##### Analisis (LE)
+
+Este método mostró una representación visual de los datos donde las nubes de puntos estaban muy cercanas entre sí. En particular, se observó que el grupo AGH se representaba como una nube roja concentrada, mientras que los otros grupos aparecían como líneas de puntos, las cuales se alineaban de manera creciente, siendo la más alta la de color amarillo. Este comportamiento sugiere que, aunque el algoritmo fue capaz de identificar algunas relaciones locales, las agrupaciones no se separaban de manera tan clara. La cercanía entre las líneas de puntos podría indicar que la elección de los parámetros no fue la óptima o que las relaciones no lineales capturadas no fueron suficientemente representativas para una separación más clara entre los grupos.
+
+Biológicamente, los resultados sugieren que, aunque el método logró identificar algunas relaciones locales entre los grupos de cáncer, las diferencias entre los grupos no se separaron de manera clara. El grupo **AGH**, representado como una nube roja concentrada, podría indicar que este tipo de cáncer tiene un perfil de expresión génica más homogéneo o distintivo en comparación con los otros grupos, que aparecen como líneas de puntos. La proximidad entre estas líneas podría reflejar que los otros tipos de cáncer comparten características moleculares similares, dificultando su diferenciación clara.
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_LE.png", width = 12, height = 9)
+
+```
+
+#### **3.6.7. MDS (Multidimensional Scaling)**
+
+##### 3.6.7.1. Algoritmo MDS Euclidean
+
+Observo que al aumentar **k** a 4 (es decir, incrementando el número de dimensiones), hay una ligera mejora en el estrés del MDS. Sin embargo, como este valor sigue siendo mayor a 0.2, concluyo que la configuración sigue siendo **pobre**. Esto sugiere que la métrica utilizada, en este caso, la **distancia euclidiana**, podría no ser la más adecuada para capturar las relaciones en los datos. Aunque intenté normalizar los datos (utilizando `df_genes` normalizado), no logré reducir significativamente el estrés. A pesar de estas limitaciones, verifico visualmente los resultados generados en la gráfica en 2D para observar cualquier patrón o agrupamiento relevante.
+
+```{r}
+# Calcular la matriz de distancias euclidianas
+distances <- dist(df_genes, method = 'euclidean')
+
+# Ejecutar el algoritmo cmdscale para obtener el MDS
+mds.results <- cmdscale(distances, eig=TRUE, k=4, x.ret=TRUE)
+
+# Calcular el estrés
+dist_reducidas <- dist(mds.results$points)
+stress <- sqrt(sum((as.matrix(distances) - as.matrix(dist_reducidas))^2) / sum(as.matrix(distances)^2))
+
+# Mostrar el estrés
+cat("El estrés del MDS es:", stress, "\n")
+
+# Calcular la varianza explicada por cada dimensión
+varianza.explicada <- mds.results$eig / sum(mds.results$eig) * 100
+
+```
+
+##### 3.6.7.2. Mostrar varianzas
+
+```{r, results='hide'}
+# Mostrar la varianza explicada
+cat("Varianza explicada por las dimensiones:\n")
+print(varianza.explicada)
+
+# Sacamos en un dataframe los puntos obtenidos de MDS
+mds.df <- data.frame(mds.results$points)
+
+# Mostrar los primeros puntos MDS
+cat("Primeras coordenadas del MDS:\n")
+head(mds.df)
+
+```
+
+##### 3.6.7.3. Graficar 2D Euclidean
+
+```{r}
+# Visualización de la varianza explicada acumulada
+varianza.acumulada <- cumsum(mds.results$eig) / sum(mds.results$eig) * 100
+plot(varianza.acumulada, type="b", xlab="Número de dimensiones", ylab="Varianza explicada acumulada (%)",
+     main="Varianza Explicada Acumulada en MDS")
+
+# Gráfico de los resultados de MDS
+ggplot(mds.df, aes(x=X1, y=X2, color=labels$cancer)) +
+  geom_point(size=3) +
+  scale_color_manual(values=c("red", "blue", "green", "orange", "purple", "pink", "cyan", "yellow")) +
+  labs(title="Método MDS (2D) RNA-seq genes Euclidiano", x="Componente 1 (X1)", y="Componente 2 (X2)", color="Tipo de Cáncer") +
+  theme_classic() +
+  theme(panel.grid.major = element_line(color = "black"),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray95"),
+        plot.title = element_text(hjust = 0.5))
+```
+
+##### 3.6.7.5. Algoritmo MDS Manhattan
+
+Observo que al mantener **k** en 4 y cambiar la métrica a **Manhattan**, se produce una disminución del estrés a **0.349**, lo que representa una mejora significativa, ya que es más de un punto de diferencia con el valor anterior. Sin embargo, el estrés sigue siendo superior a **0.2**, lo que indica que la configuración aún no es **aceptable**. Además, probé la métrica **coseno**, pero no la incluí en los resultados para ahorrar espacio, ya que no ofreció una mejora significativa en la separación de los genes. Esto sugiere que, aunque hubo una ligera mejora con la distancia de Manhattan, el modelo aún no refleja adecuadamente la estructura de los datos.
+
+```{r}
+# Calcular la matriz de distancias euclidianas
+distances <- dist(df_genes, method = 'manhattan')
+
+# Ejecutar el algoritmo cmdscale para obtener el MDS
+mds.results <- cmdscale(distances, eig=TRUE, k=5, x.ret=TRUE)
+
+# Calcular el estrés
+dist_reducidas <- dist(mds.results$points)
+stress <- sqrt(sum((as.matrix(distances) - as.matrix(dist_reducidas))^2) / sum(as.matrix(distances)^2))
+
+# Mostrar el estrés
+cat("El estrés del MDS es:", stress, "\n")
+
+# Calcular la varianza explicada por cada dimensión
+varianza.explicada <- mds.results$eig / sum(mds.results$eig) * 100
+
+```
+
+##### 3.6.7.6. Mostrar varianzas Manhattan
+
+```{r, results='hide'}
+# Mostrar la varianza explicada
+cat("Varianza explicada por las dimensiones:\n")
+print(varianza.explicada)
+
+# Sacamos en un dataframe los puntos obtenidos de MDS
+mds.df <- data.frame(mds.results$points)
+
+# Mostrar los primeros puntos MDS
+cat("Primeras coordenadas del MDS:\n")
+head(mds.df)
+
+```
+
+##### 3.6.7.7. Graficar por grupos Manhattan
+
+```{r}
+# Visualización de la varianza explicada acumulada
+varianza.acumulada <- cumsum(mds.results$eig) / sum(mds.results$eig) * 100
+plot(varianza.acumulada, type="b", xlab="Número de dimensiones", ylab="Varianza explicada acumulada (%)",
+     main="Varianza Explicada Acumulada en MDS")
+
+# Gráfico de los resultados de MDS
+ggplot(mds.df, aes(x=X1, y=X2, color=labels$cancer)) +
+  geom_point(size=3) +
+  scale_color_manual(values=c("red", "blue", "green", "orange", "purple", "pink", "cyan", "yellow")) +
+  labs(title="Método MDS (2D) RNA-seq genes Manhattan", x="Componente 1 (X1)", y="Componente 2 (X2)", color="Tipo de Cáncer") +
+  theme_classic() +
+  theme(panel.grid.major = element_line(color = "black"),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray95"),
+        plot.title = element_text(hjust = 0.5))
+```
+
+##### 3.6.7.8. Analisis del MDS
+
+### Mótivo de Elección del MDS (Multi-Dimensional Scaling)
+
+He elegido MDS para preservar las distancias originales entre los puntos de datos, manteneniendo la estructura de similitud de los datos, y los puntos que son similares en alta dimensión deben permanecer cerca en el espacio reducido. Seleccioné dos métodos, el euclidiano y el Manhattan, junto a una implemantación clásica (PCoA) ya que los datos son continuos.
+
+------------------------------------------------------------------------
+
+### Aspectos Positivos del MDS
+
+-   A diferencia de otras técnicas, el MDS no requiere suposiciones previas sobre los datos, como la independencia de las muestras o la normalidad.
+
+-   El MDS métrico es una técnica interpretable, ya que se enfoca en conservar las distancias absolutas entre las observaciones (si son variables continuas)
+
+-   Aunque el MDS no métrico no busca mantener las distancias exactas entre las observaciones, esto puede no ser relevante debido a la naturaleza ordinal de los datos, ya que no se trata de distancias reales.
+
+------------------------------------------------------------------------
+
+### Limitaciones de MDS
+
+-   Un desafío importante de MDS es que los resultados dependen en gran medida de la métrica de distancia utilizada. Si se elige una métrica inapropiada, las distancias en el espacio reducido podrían no reflejar con precisión las relaciones de similitud entre los puntos originales.
+
+-  MDS puede ser ineficiente y computacionalmente costoso cuando se trabaja con conjuntos de datos muy grandes debido a la necesidad de calcular todas las distancias entre los puntos. Esto hace que MDS sea menos adecuado para grandes volúmenes de datos de alta dimensionalidad, como los datos de expresión génica a nivel de todo el genoma.
+
+------------------------------------------------------------------------
+
+### Análisis MDS
+
+En mi análisis de los datos los resultados de MDS fueron similares a los obtenidos con PCA, lo que sugiere que la reducción de dimensionalidad capturó patrones similares en los datos. En particular, el grupo **AGH** se separó claramente de los demás grupos, situándose a un lado en el gráfico, lo que indica que las muestras de este grupo son significativamente diferentes de las de los otros grupos en términos de las distancias. Esta separación es similar a la obtenida con PCA, lo que sugiere que las relaciones no lineales entre las muestras son suficientemente fuertes como para no ser capturadas por ambos métodos
+
+A pesar de la clara separación del grupo **AGH**, la representación visual no mostró una distinción tan marcada entre los otros grupos, lo que sugiere que las relaciones de similitud entre las muestras dentro de estos grupos no son lo suficientemente fuertes o que la métrica de distancia elegida no fue la más adecuada para reflejar la estructura global del conjunto de datos. La separación evidente del grupo **AGH** indica que este grupo tiene un patrón de expresión génica distinto. Sin embargo, la falta de una separación clara entre los otros grupos podría ser indicativa de que las relaciones entre estas muestras no se capturan correctamente con la distancia seleccionada, o que la reducción de dimensionalidad utilizada no fue lo suficientemente efectiva para representar la complejidad de los datos.
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_MDS.png", width = 12, height = 9)
+
+```
+
+#### **3.6.7. ICA**
+
+Utilizo la función `ica` sobre el conjunto de datos de expresión génica (`df_genes`), con el objetivo de extraer dos componentes independientes (`n.comp = 2`). Los resultados del algoritmo se almacenan en un dataframe (`ica.df`), donde las señales independientes se encuentran en la matriz `ica.results$S`. Renombro las columnas del dataframe a "X1", "X2" y "X3" para una mayor claridad en la representación de los componentes extraídos. Finalmente, agrego las etiquetas de clase (`class_labels`) al dataframe y me aseguro de que estas sean tratadas como factores para facilitar la visualización y el análisis posterior, lo que permite comparar cómo los diferentes subtipos de cáncer de mama se distribuyen en el espacio generado por los componentes independientes.
+
+```{r}
+# Aplicar ICA con fastICA
+ica.results <- ica(df_genes, nc = 2, method = "fast")
+
+# Convertir los resultados en un data.frame
+ica.df <- data.frame(ica.results$S)  # S contiene las señales independientes
+colnames(ica.df) <- c("X1", "X2")  # Renombrar columnas para mayor claridad
+
+# Añadir las etiquetas al data.frame
+ica.df$class <- as.factor(class_labels)  # Asegurarse de que las etiquetas sean factores
+
+```
+
+##### 3.6.7.1. Graficar por grupos Manhattan
+
+```{r}
+# Visualización
+set.seed(1234)
+library(ggplot2)
+ggplot(ica.df, aes(x = X1, y = X2, color = class)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple")) +
+  labs(title = "Método ICA (2D) RNA-seq genes", 
+       x = "Componente Independiente 1 (X1)", 
+       y = "Componente Independiente 2 (X2)", 
+       color = "Clase") +
+  theme_classic() +
+  theme(panel.grid.major = element_line(color = "black"), panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "gray98"), plot.title=element_text(hjust=0.5))
+
+```
+
+##### Guardar imagen
+
+```{r}
+
+# Guardar el gráfico en un archivo
+ggsave("grafico_ICA.png", width = 12, height = 9)
+
+```
+
+##### 3.6.7.2. Analisis del ICA
+
+### Mótivo de Elección del ICA
+
+Usé ICA ya que descompone los datos en componentes que son estadísticamente independientes entre sí, aunque no se considera un método de reducción de dimensionalidad propiamente dicho. Su principal uso es para reducir el ruido en los conjuntos de datos.
+
+------------------------------------------------------------------------
+
+#### Aspectos Positivos
+
+-   El ICA es capaz de identificar señales acopladas, logrando que los diferentes componentes sean lo más independientes posible, incluso Aunque los procesos biológicos no son completamente independientes y se espera que sus variables estén correlacionadas en cierto grado.
+
+-   Aunque su modelo base es lineal, ICA tiene la capacidad de extraer información relevante de relaciones complejas al identificar señales independientes en datos de alta dimensionalidad.
+
+------------------------------------------------------------------------
+
+#### Limitaciones
+
+-   ICA asume que las señales subyacentes son completamente independientes, lo que puede no ser del todo cierto en datos genómicos, donde existen correlaciones biológicas significativas entre genes.
+
+-   Es un método poco utilizado, principalmente debido a razones históricas que, generalmente, no lo incluyen en los estudios del ámbito biológico.
+
+-   ICA requiere establecer una semilla (seed), ya que tiene un componente estocástico que genera resultados diferentes con cada ejecución.
+
+-   Se necesita más experiencia, estandarización y evaluación del uso del ICA para identificar las situaciones óptimas en las que aplicarlo. Sin embargo, tiene un potencial significativo para el análisis de conjuntos de datos scRNA-seq y, en general, para datos ómicos.
+
+------------------------------------------------------------------------
+
+### **Análisis de ICA**
+
+En mi análisis de los datos, los resultados de **ICA (Análisis de Componentes Independientes)** fueron similares a los obtenidos con **MDS** y **PCA**, lo que sugiere que la reducción de dimensionalidad capturó patrones similares en los datos. En particular, el grupo **AGH** se separó claramente de los demás grupos, situándose a un lado en el gráfico, lo que indica que las muestras de este grupo son significativamente diferentes en términos de expresión génica respecto a los otros grupos. Esta separación evidente en ICA refuerza los hallazgos previos de MDS y PCA, sugiriendo que las relaciones no lineales entre las muestras son suficientemente fuertes como para ser capturadas por los tres métodos. Sin embargo, al igual que con PCA y MDS, la separación entre los otros grupos no fue tan marcada, lo que podría indicar que las diferencias entre ellos no son tan claras o que la métrica de distancia o la técnica de reducción utilizada no logró capturar toda la complejidad de las relaciones entre estos grupos.
+
+#### **3.6.8. Clustering Jerárquico** (Método DIANA)
+
+###### 3.6.8.2. Cálculo
+
+El código implementa el **clustering divisivo** utilizando el algoritmo **DIANA** con dos métricas de distancia distintas: **euclidiana** y **Manhattan**. En la primera línea, se utiliza la distancia **euclidiana**, que mide la "distancia directa" entre puntos en un espacio multidimensional. En la segunda línea, se utiliza la distancia **Manhattan**, que calcula las diferencias absolutas entre las coordenadas de los puntos en cada dimensión. En ambos casos, el parámetro `stand = FALSE` indica que no se aplica ninguna normalización a los datos antes del análisis. Esto permite evaluar cómo cada métrica de distancia influye en los resultados del clustering de los datos de expresión génica.
+
+```{r}
+# Implementaen del clustering divisivo
+
+diana_euclidean <- diana(df_genes_scale, metric = "euclidean", stand = FALSE) 
+diana_manhattan <- diana(df_genes_scale, metric = "manhattan", stand = FALSE) 
+
+```
+
+###### 3.6.8.3. Gráfica con Ecludiene and Manhanttan
+
+```{r}
+colors <- rainbow(5)
+clust_diana_euclidean <- fviz_dend(diana_euclidean, 
+                                   cex = 0.5, 
+                                   k = 5,
+                                   palette = colors, 
+                                   main = 'Euclidean',
+                                   xlab = "Índice de Observaciones",
+                                   ylab = "Distancia") + 
+  theme_classic()
+
+
+colors <- rainbow(5)
+clust_diana_manhattan <- fviz_dend(diana_manhattan, 
+                                   cex = 0.5, 
+                                   k = 5,
+                                   palette = colors, 
+                                   main = 'Manhattan',
+                                   xlab = "Índice de Observaciones",
+                                   ylab = "Distancia") + 
+  theme_classic()
+
+grid.arrange(clust_diana_euclidean, clust_diana_manhattan, nrow = 2)
+
+```
+
+##### 3.6.8.1. Clustering jerárquico:DIANA
+
+### Mótivo de Elección del Isomap
+
+Pensé que DIANA podrían dar una  estructura jerárquica a ñps genes, formando grupos que tienen subgrupos dentro de ello (canceres) y que se podrian ver bien con esta tecnica.
+
+------------------------------------------------------------------------
+
+#### Aspectos positivos del clustering jerárquico (DIANA):
+
+-    A diferencia de métodos como K-means, no es necesario predefinir el número de grupos, lo que lo hace más flexible.
+
+-    La representación gráfica mediante dendrogramas facilita la interpretación de los resultados, ya que muestra cómo los clústeres se agrupan a medida que se dividen.
+
+------------------------------------------------------------------------
+
+#### Aspectos negativos del clustering jerárquico (DIANA):
+
+-   Este método puede ser computacionalmente costoso para grandes conjuntos de datos, lo que puede dificultar su aplicación en estudios de expresión génica a gran escala.
+
+-   El clustering jerárquico puede verse afectado por valores atípicos o ruido en los datos, lo que puede hacer que los clústeres no reflejen correctamente las relaciones biológicas subyacentes.
+
+-   Aunque no se debe predefinir el número de clústeres, puede ser complicado determinar el nivel adecuado de corte en el dendrograma para obtener una partición óptima de los clústeres.
+
+------------------------------------------------------------------------
+
+#### **Análisis de (DIANA):**
+
+Al realizar el análisis de clustering jerárquico utilizando **DIANA**, los dendrogramas generados no presentan una visualización clara de los grupos más pequeños. Esto podría deberse a la alta dimensionalidad de los datos, ya que cuando se manejan numerosos genes o muestras, el dendrograma se vuelve denso y complejo, dificultando su interpretación. Las diferencias entre los grupos más pequeños no son fácilmente distinguibles, lo que podría ser resultado de que las distancias entre los puntos de datos no están suficientemente diferenciadas, lo que impide que los grupos más pequeños se destaquen adecuadamente. Por tanto no es unabuena técnica a usar con este tipo de muestras.
+
+##### 3.6.9. clustering no jerárquico: K.means
+
+###### 3.6.9.1. Cálculo y grafico
+
+Primeramente, se determina el número óptimo de clusters mediante el método del **codo** (WSS: within-cluster sum of squares), utilizando la función `fviz_nbclust`. Este método ayuda a identificar el número adecuado de clusters observando la caída en la variabilidad dentro de los grupos a medida que se aumentan los clusters. Luego, se realiza el clustering **K-means** con 4 clusters definidos manualmente (`centers = 4`) por la regla de coco, especificando un máximo de 100 iteraciones y 25 inicios aleatorios para asegurar la estabilidad del resultado. Finalmente, se visualizan los resultados del clustering en un gráfico de dispersión utilizando `fviz_cluster`, donde se muestran los puntos y las etiquetas de los clusters, con un estilo gráfico ajustado para una mejor presentación visual.
+
+```{r}
+# n optimo de clusters
+fviz_nbclust(df_genes_scale, kmeans, method = "wss") +
+  ggtitle("Numero optimo de clusters", subtitle = "") +
+  theme_classic()
+
+# Realizar el clustering kmeans
+kmeans.result <- kmeans(df_genes_scale, centers = 2, iter.max = 100, nstart = 25)
+
+# Visualizar el clustering y las etiquetas
+fviz_cluster(kmeans.result, df_genes_scale, 
+             xlab = '', ylab = '', 
+             geom = "point", 
+             labelsize = 4, 
+             ggtitle("Cluster K-means de RNA-seq genes") +
+               theme_minimal() +
+               theme(plot.title = element_text(hjust = 0.5, margin = margin(b = -10))))
+```
+
+###### 3.6.9.2. Análisis del clúster (Método K-means)
+
+### Mótivo de Elección
+
+K-means permite dividir los datos en un número específico de grupos (*k*), lo que es útil cuando se tiene una idea previa de la cantidad de clústeres esperados. Es eficiente para conjuntos de datos grandes y produce particiones claras, lo que facilita el análisis.
+
+------------------------------------------------------------------------
+
+#### Aspectos positivos del clustering no jerárquico (K-means):
+
+-    K-means es fácil de entender y rápido de ejecutar, incluso con grandes conjuntos de datos. Esto lo convierte en una opción popular para explorar grandes volúmenes de datos de expresión génica.
+
+-    A diferencia del clustering jerárquico, K-means permite predefinir el número de clústeres a formar. Esto puede ser útil cuando se tiene una idea previa del número de subgrupos que se desean identificar.
+
+-    El algoritmo es eficiente desde el punto de vista computacional, lo que permite aplicarlo en grandes conjuntos de datos sin que se vuelva un cuello de botella en el proceso.
+
+------------------------------------------------------------------------
+
+#### Limitaciones clustering no jerárquico (K-means):
+
+-   K-means requiere que el número de clústeres se especifique de antemano. Elegir el valor correcto para K puede ser complicado y no siempre refleja la estructura subyacente de los datos.
+
+-   K-means es sensible a los valores atípicos (outliers), que pueden distorsionar los centroides y afectar los resultados del agrupamiento.
+
+-   K-means funciona mejor cuando los clústeres son de forma esférica y tienen varianzas similares. Si los clústeres tienen formas complejas o distribuciones muy diferentes, los resultados pueden no ser satisfactorios.
+
+#### **Análisis de (K-means):**
+
+El análisis de K-means con 4 clusters muestra que tres de ellos se superponen, mientras que uno se separa claramente. Aunque la regla del codo indica que 4 clusters es el número óptimo, la superposición de los clusters sugiere que los datos no se agrupan de manera clara en 4 grupos, lo que podría indicar que este número no es el más adecuado. Al probar con solo 2 clusters, la separación es más evidente, con la mayoría de los datos concentrados en el primer cluster y otro grupo distinto en el segundo. Sin embargo, al aumentar el número de clusters (3, 4, etc.), la superposición aumenta dentro del primer cluster, lo que sugiere que la mayoría de la expresión génica se concentra en un grupo principal, con valores similares o cercanos entre sí.
+
+### 4. Imágen de de todas los algoritmos sin clusters.
+
+```{r}
+# Cargar la librería
+library(magick)
+
+# Leer las imágenes guardadas
+img1 <- image_read (file.choose())
+img2 <- image_read (file.choose())
+img3 <- image_read (file.choose())
+img4 <- image_read (file.choose())
+img5 <- image_read (file.choose())
+img6 <- image_read (file.choose())
+img7 <- image_read (file.choose())
+img8 <- image_read (file.choose())
+
+# Combinar las imágenes horizontalmente en filas
+fila1 <- image_append(c(img1, img2, img3, img4), stack = FALSE)  # Primera fila
+fila2 <- image_append(c(img5, img6, img7, img8), stack = FALSE)  # Segunda fila
+
+# Combinar las filas verticalmente
+imagen_final <- image_append(c(fila1, fila2), stack = TRUE)
+
+# Mostrar la imagen en viewer (se puede ampliar en la pestaña y verla perfectamente después aunque se imprime en HTML)
+print(imagen_final)
+
+```
+
+### 5. Conclusiones finales
+
+Tras el análisis podemos afirmar que los métodos como t-SNE y UMAP lograron una separación más clara entre los grupos, lo que sugiere que son más efectivos para capturar patrones no lineales en los datos y distinguir entre los diferentes tipos de cáncer. Estos resultados podrían indicar que la expresión génica de los genes del cáncer de mama tiene "huellas moleculares" únicas, pero que las relaciones entre algunos de las etiquetasson sutiles y difíciles de captar con otros métodos. Aunque métodos como PCA, MDS, ICA y K-means han intentado agrupar los datos, los resultados no han sido completamente satisfactorios.
+
+Con respecto a los clusters tanto jerárquicos como no jerárquicos parece que no fueron muy útiles a la hora de separar adecuacamnete estos grupos de cánceres segun la expresión de los genes en el RNA-seq, debido seguramente a la alta dimensionalidad de los datos y por las relaciones no lineales entre los datos. 
+
+La distribución de los tipos de cáncer basados en la expresión génica (RNA-seq) en el contexto de las técnicas de reducción de dimensionalidad y clustering revela patrones biológicamente interpretables:
+
+El análisis realizado sugiere que los patrones de expresión génica en cáncer de mama podrían compartir rutas moleculares con otros tipos de cáncer, reflejando procesos biológicos comunes como inflamación, metabolismo, inmunidad o proliferación celular. Por ejemplo, el grupo etiquetado como **AGH (Adult Granulocyte Hematopoietic)** mostró una separación consistente en todas las técnicas, lo que indica un patrón distintivo posiblemente asociado con funciones inmunológicas específicas. En contraste, otros grupos, como **CFB (Complement Factor B)** y **CHC (Células Hepáticas Cancerosas)**, presentaron una superposición que podría reflejar rutas compartidas relacionadas con el complemento o el metabolismo. La separación más clara observada con técnicas no lineales como UMAP y t-SNE destaca que las relaciones en los datos son complejas y no lineales, lo que sugiere que ciertos subgrupos de cáncer tienen huellas moleculares únicas que no son captadas adecuadamente por métodos tradicionales como PCA o MDS. Además, la dificultad de separar los datos en métodos lineales podría reflejar la heterogeneidad intrínseca del cáncer de mama, reforzando la necesidad de herramientas avanzadas para explorar su diversidad molecular y su posible conexión con otros tipos de cáncer.
+

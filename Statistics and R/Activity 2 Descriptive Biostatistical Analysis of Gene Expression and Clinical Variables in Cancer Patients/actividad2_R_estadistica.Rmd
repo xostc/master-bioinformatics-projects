@@ -1,0 +1,536 @@
+---
+title: "Actividad 2 R"
+author: "Xosé Manuel Tomé Castro"
+date: "2024-12-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+## Cargar las librerias
+
+```{r}
+rm(list = ls())
+
+# Cargar las librerías
+library(ggplot2)   # Para visualización de datos
+library(stats)     # Para funciones estadísticas básicas
+library(car)       # Para análisis de regresión y diagnóstico
+library(nortest)   # Para pruebas de normalidad
+library(gtsummary) # Para resumen de tablas y análisis descriptivos
+library(reshape2)
+library(gridExtra)
+library(tidyr)
+library(dplyr)
+library(patchwork)
+library(tibble)
+library(nparLD)
+library(PMCMRplus)
+library(ggplot2)
+library(grid)
+library(flextable)
+library(officer)
+```
+
+
+## Cargar el dataset y dataframes
+
+```{r}
+# Cargar el archivo con los datos
+Dataset_genes <- read.csv("C:/Users/resta/Desktop/UNIR 1 cuatrimestre asignaturas/Temas Estadística y R para Ciencias de la Salud/actividad 2/Dataset expresión genes.csv")
+
+# 1. Filtrar las columnas correspondientes a los genes que comienzan con "AQ_"
+genes_filtrados <- Dataset_genes[, grep("^AQ_", colnames(Dataset_genes))]
+
+# Verificar los datos filtrados
+head(genes_filtrados)
+
+# 2. Creacion del dataframe de tumor y trat
+genes_tumor_trat <- Dataset_genes %>%
+  dplyr::select(trat, tumor) %>%  # Seleccionar las columnas 'trat' y 'tumor'
+  bind_cols(genes_filtrados)  # Añadir las columnas de genes filtrados a la derecha
+
+# Ver los primeros registros de genes_tumor_trat
+head(genes_tumor_trat)
+
+# 3. Filtrar el dataframe para mantener solo la columna 'edad' y las columnas de genes que empiezan con "AQ_"
+genes_edad <- Dataset_genes %>%
+  dplyr::select(edad, starts_with("AQ_"))  # Seleccionamos 'edad' y las columnas de genes que comienzan con "AQ_"
+
+# Verificar el nuevo dataframe
+head(genes_edad)
+
+
+```
+
+
+## Comprobación de la distribucion de los datos. 
+
+### Normalidad de los datos: variables bioquímicas, síntomas, variables sociodemográficas 
+
+En la actividad 1, pudimos observar que la mayoría de los datos bioquímicos no seguían una distribución normal. Ahora realizaremos un nuevo análisis, incorporando de nuevo las variables bioquímicas continuas y las variables categóricas relacionadas con síntomas y aspectos sociodemográficos. 
+
+```{r}
+# Cargar las bibliotecas necesarias
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Filtrar las columnas por posición para las variables bioquímicas (42 a 53)
+variables_bioquimicas <- Dataset_genes[, 42:53]
+
+# Filtrar las columnas por posición para las variables de síntomas (9 a 17 y 19 a 36)
+variables_sintomas <- Dataset_genes[, c(9:17, 19:36)]
+
+# Filtrar las columnas por posición para las variables sociodemográficas (columnas 3 y 4)
+variables_sociodemograficas <- Dataset_genes[, 3:4]
+
+# Asegurarse de que las variables categóricas son factores
+variables_sintomas <- variables_sintomas %>% mutate(across(everything(), as.factor))
+variables_sociodemograficas <- variables_sociodemograficas %>% mutate(across(everything(), as.factor))
+
+# Convertir las variables a formato largo para poder usar facet_wrap
+variables_bioquimicas_long <- variables_bioquimicas %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+variables_sintomas_long <- variables_sintomas %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+variables_sociodemograficas_long <- variables_sociodemograficas %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+# Graficar la distribución de las variables bioquímicas (numéricas)
+p_bioquimicas <- ggplot(variables_bioquimicas_long, aes(x = value)) +
+  geom_histogram(aes(y = ..density..), binwidth = 1, color = "black", fill = "skyblue", alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free") + 
+  labs(title = "Distribución de Variables Bioquímicas", x = "Valor", y = "Densidad") +
+  theme_minimal()
+
+# Graficar las frecuencias de las variables de síntomas (categóricas)
+p_sintomas <- ggplot(variables_sintomas_long, aes(x = value)) +
+  geom_bar(color = "black", fill = "red", alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free") + 
+  labs(title = "Frecuencia de Variables de Síntomas", x = "Categoría", y = "Frecuencia") +
+  theme_minimal()
+
+# Graficar las frecuencias de las variables sociodemográficas (categóricas)
+p_sociodemograficas <- ggplot(variables_sociodemograficas_long, aes(x = value)) +
+  geom_bar(color = "black", fill = "skyblue", alpha = 0.6) +
+  facet_wrap(~ variable, scales = "free") + 
+  labs(title = "Frecuencia de Variables Sociodemográficas", x = "Categoría", y = "Frecuencia") +
+  theme_minimal()
+
+# Mostrar los gráficos
+print(p_bioquimicas)
+print(p_sintomas)
+print(p_sociodemograficas)
+
+
+```
+Observamos que la mayoría de las variables bioquímicas, como IgE, IgA y PCR, no siguen una distribución normal, mientras que otras, como la Transferrina o IgG, sí lo hacen. En cuanto a los síntomas, variables como tos, fiebre o disnea tampoco presentan una distribución normal. Por otro lado, la variable de edad se dividió en rangos, mostrando una aparente distribución normal. En el caso del sexo, se observó un predominio de mujeres sobre hombres.
+
+### Histograma de los genes
+
+ Se realizado un estudio gráfico utilizando histogramas de densidad. Este enfoque visual me permitió observar de manera más clara si las variables siguen o no una distribución normal.
+
+
+``` {r}
+
+# Crear lista para almacenar los gráficos
+grafica_histograma_lista <- list()  # Definir correctamente la lista
+
+# Crear un bucle para generar histogramas con densidad para cada gen
+for (gen in colnames(genes_filtrados)) {
+  
+  # Generar el histograma con densidad y área sombreada
+  histograma_con_densidad <- ggplot(genes_filtrados, aes_string(x = gen)) + 
+    geom_histogram(binwidth = diff(range(genes_filtrados[[gen]])) / 30, 
+                   fill = "#9370DB", color = "black", alpha = 0.7, aes(y = after_stat(density))) +  
+    geom_density(aes(fill = "..x.."), color = "black", linewidth = 1, alpha = 0.3) +  
+    labs(x = gen, y = "Densidad/Frecuencia") +  # Usamos labs() para definir el título
+    theme_minimal() + 
+    theme(
+      axis.text.x = element_text(angle = 0, hjust = 1),  # Ajustamos el texto del eje X
+      plot.title = element_text(size = 16)  # Reduzco el tamaño de los títulos de cada gráfico
+    ) +
+    ggtitle(paste("Histograma y Densidad de", gen))  # Título con el nombre del gen
+  
+  # Agregar el gráfico a la lista
+  grafica_histograma_lista[[gen]] <- histograma_con_densidad
+  
+  # Mostrar el gráfico en la consola
+  print(histograma_con_densidad)
+}
+
+# Combinar todos los gráficos en una sola imagen con 4 columnas y tantas filas como sea necesario
+histograma_combinado_grafico <- wrap_plots(grafica_histograma_lista, ncol = 4) + 
+  plot_layout(guides = "collect")  # Agrupa todas las leyendas en una sola
+
+# Mostrar el gráfico combinado
+print(histograma_combinado_grafico)
+
+# Guardar el gráfico combinado en un archivo PNG con un tamaño mayor para evitar que los gráficos se peguen
+ggsave("histogramas_densidad_genes.png", histograma_combinado_grafico, width = 20, height = 30)
+
+
+
+```
+
+## Comprobación de Normalidad de la variable edad con Shapiro-Wilk y Kolmogorov-Smirnov 
+
+```{r}
+# Crear un dataframe vacío para almacenar los resultados
+resultados_normalidad <- tibble(
+  Variable = character(),
+  `Test utilizado` = character(),
+  `Valor p` = character(),  
+  Interpretacion = character()  # Corregido "Interpretación" a "Interpretacion"
+)
+
+# Definir la columna 'edad' en el dataset_genes
+# Asegúrate de que 'dataset_genes' contiene la columna 'edad' y que no tiene demasiados NA
+edad_data <- na.omit(Dataset_genes$edad)
+
+# Prueba de Shapiro-Wilk
+prueba_shapiro <- shapiro.test(edad_data)
+# Definir valor p de Shapiro-Wilk
+valor_p_shapiro <- format(prueba_shapiro$p.value, scientific = TRUE, digits = 2)
+
+# Interpretación de Shapiro-Wilk
+interpretacion_shapiro <- ifelse(
+  prueba_shapiro$p.value > 0.05,
+  "Los datos son normales",
+  "Los datos no son normales"
+)
+
+# Agregar resultados de Shapiro-Wilk
+resultados_normalidad <- resultados_normalidad %>% 
+  add_row(
+    Variable = "edad",
+    `Test utilizado` = "Shapiro-Wilk",
+    `Valor p` = valor_p_shapiro,  # Ahora definido correctamente
+    Interpretacion = interpretacion_shapiro  # Corregido "Interpretación"
+  )
+
+# Prueba de Kolmogorov-Smirnov
+prueba_ks <- ks.test(edad_data, "pnorm", 
+                     mean(edad_data, na.rm = TRUE), 
+                     sd(edad_data, na.rm = TRUE))
+# Definir valor p de Kolmogorov-Smirnov
+valor_p_ks <- format(prueba_ks$p.value, scientific = TRUE, digits = 3)
+
+# Interpretación de Kolmogorov-Smirnov
+interpretacion_ks <- ifelse(
+  prueba_ks$p.value > 0.05,
+  "Los datos son normales",
+  "Los datos no son normales"
+)
+
+# Agregar resultados de Kolmogorov-Smirnov
+resultados_normalidad <- resultados_normalidad %>% 
+  add_row(
+    Variable = "edad",
+    `Test utilizado` = "Kolmogorov-Smirnov",
+    `Valor p` = valor_p_ks,  # Ya en formato de texto
+    Interpretacion = interpretacion_ks  # Corregido "Interpretación"
+  )
+
+# Mostrar los resultados finales
+print(resultados_normalidad)
+
+
+
+``` 
+Se ha observado que los datos siguen una distribución normal, por lo que es apropiado realizar análisis paramétricos.
+
+
+### Tabla 1: Shapiro-Wilk y Kolmogorov-Smirnov Genes
+
+La **Tabla 1** presenta los resultados de los tests de **Shapiro-Wilk** y **Kolmogorov-Smirnov**, que son métodos estadísticos utilizados para evaluar si los datos de los genes siguen una distribución normal. El **test de Shapiro-Wilk** es particularmente útil para muestras pequeñas, ya que es muy sensible a la falta de normalidad. Por otro lado, el **test de Kolmogorov-Smirnov** compara la distribución de los datos observados con una distribución normal teórica, utilizando la media y desviación estándar de los datos.
+
+Ambos métodos complementan la inspección visual, como los histogramas de densidad, al proporcionar valores p que indican si podemos rechazar la hipótesis nula de normalidad. Si el valor p es menor a 0.05, concluimos que los datos no siguen una distribución normal. Esto es crucial porque el tipo de distribución determina qué métodos estadísticos debemos usar: si los datos no son normales, debemos optar por análisis no paramétricos. Estos dos tests nos permiten evaluar objetivamente la distribución de las variables, garantizando la solidez de nuestras conclusiones.
+
+```{r}
+
+# Crear un dataframe vacío para almacenar los resultados
+resultados_normalidad <- tibble(
+  Variable = character(),
+  `Test utilizado` = character(),
+  `Valor p` = character(),  # Cambiar a carácter desde el principio
+  Interpretación = character()
+)
+
+# Crear un bucle para evaluar normalidad por cada gen
+for (gen in colnames(genes_filtrados)) {
+  
+  # Prueba de Shapiro-Wilk
+  prueba_shapiro <- shapiro.test(genes_filtrados[[gen]])
+  interpretacion_shapiro <- ifelse(
+    prueba_shapiro$p.value > 0.05,
+    "Los datos son normales",
+    "Los datos no son normales"
+  )
+  
+  # Formatear el valor p de Shapiro-Wilk en notación científica utilizando format()
+  valor_p_shapiro <- format(prueba_shapiro$p.value, scientific = TRUE, digits = 2)
+  
+  # Agregar resultados de Shapiro-Wilk
+  resultados_normalidad <- resultados_normalidad %>% 
+    add_row(
+      Variable = gen,
+      `Test utilizado` = "Shapiro-Wilk",
+      `Valor p` = valor_p_shapiro,  # Ya en formato de texto
+      Interpretación = interpretacion_shapiro
+    )
+  
+  # Verificar si hay empates antes de aplicar el test de Kolmogorov-Smirnov
+  if (length(unique(genes_filtrados[[gen]])) > 1) {  
+    # Prueba de Kolmogorov-Smirnov
+    prueba_ks <- ks.test(genes_filtrados[[gen]], "pnorm", 
+                         mean(genes_filtrados[[gen]], na.rm = TRUE), 
+                         sd(genes_filtrados[[gen]], na.rm = TRUE))
+    interpretacion_ks <- ifelse(
+      prueba_ks$p.value > 0.05,
+      "Los datos son normales",
+      "Los datos no son normales"
+    )
+    
+    # Formatear el valor p de Kolmogorov-Smirnov en notación científica utilizando format()
+    valor_p_ks <- format(prueba_ks$p.value, scientific = TRUE, digits = 3)
+    
+    # Agregar resultados de Kolmogorov-Smirnov
+    resultados_normalidad <- resultados_normalidad %>% 
+      add_row(
+        Variable = gen,
+        `Test utilizado` = "Kolmogorov-Smirnov",
+        `Valor p` = valor_p_ks,  # Ya en formato de texto
+        Interpretación = interpretacion_ks  # Corregido "Interpretación"
+      )
+  } else {
+    # Si hay empates, se muestra un mensaje en la tabla
+    resultados_normalidad <- resultados_normalidad %>% 
+      add_row(
+        Variable = gen,
+        `Test utilizado` = "Kolmogorov-Smirnov",
+        `Valor p` = "Empates en los datos",  
+        Interpretación = "No se aplica el test debido a empates"
+      )
+  }
+}
+
+# Mostrar los resultados finales
+print(resultados_normalidad)
+
+# Guardar la tabla como archivo CSV
+write.csv(resultados_normalidad, "resultados_pruebas_normalidad.csv", row.names = FALSE)
+
+# Crear un documento de Word
+doc <- read_docx()
+
+# Convertir la tabla a un flextable para un formato más bonito en Word
+tabla_flextable <- flextable(resultados_normalidad)
+
+# Agregar la tabla al documento
+doc <- doc %>%
+  body_add_par("Resultados de Pruebas de Normalidad", style = "heading 1") %>%
+  body_add_flextable(tabla_flextable)
+
+# Guardar el documento como archivo Word
+print(doc, target = "resultados_normalidad.docx")
+
+
+             
+```
+Concluimos, por tanto, que la mayoría de los datos de los genes no sigue una distribución normal en ambos casos. Los que son normales están asociados a Kolmogorov-Smirnov. Sin embargo, optamos por análisis no paramétricos, que no dependen de suposiciones de normalidad. En lugar de utilizar la media y la desviación estándar, emplearemos medidas de tendencia central y dispersión, como la **mediana** y los **cuartiles**, para el análisis. Se adjunta la gráfica en el word adjunto como tabla 1.
+
+## Visualización QQplot para comprobar normalidad
+
+El QQplot (Quantile-Quantile Plot) es una herramienta gráfica utilizada para evaluar si los datos siguen una distribución normal. Comparando los cuantiles observados de los datos con los cuantiles esperados de una distribución normal, permite identificar visualmente si los puntos se alinean en una línea diagonal (indicando normalidad) o si existen desviaciones, lo que sugiere que los datos no son normales. Se usa como complemento a pruebas estadísticas como Shapiro-Wilk o Kolmogorov-Smirnov, ya que ayuda a confirmar la distribución de los datos de forma visual y detectar patrones como asimetrías o colas largas, ofreciendo una validación adicional antes de realizar análisis no paramétricos.
+
+
+```{r}
+# Cargar librerías necesarias
+library(ggplot2)
+library(patchwork)
+
+# Crear lista para almacenar los Q-Q plots
+qqplot_lista <- list()
+
+# Generar un bucle para crear Q-Q plots de cada gen
+for (gen in colnames(genes_filtrados)) {
+  # Generar el Q-Q plot usando ggplot2
+  qqplot <- ggplot(data = data.frame(genes_filtrados[[gen]]), aes(sample = genes_filtrados[[gen]])) +
+    stat_qq(color = "#9370DB", size = 1.5) +  # Puntos del Q-Q plot
+    stat_qq_line(color = "red", size = 1) +  # Línea de referencia
+    labs(
+      title = paste("Q-Q Plot de", gen),
+      x = "Cuantiles teóricos",
+      y = "Cuantiles muestrales"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      axis.title = element_text(size = 12)
+    )
+  
+  # Agregar el gráfico a la lista
+  qqplot_lista[[gen]] <- qqplot
+  
+  # Mostrar el Q-Q plot en la consola
+  print(qqplot)
+}
+
+# Combinar todos los Q-Q plots en una sola imagen con 4 columnas
+qqplot_combinado <- wrap_plots(qqplot_lista, ncol = 4) + 
+  plot_layout(guides = "collect")  # Opcional: agrupar leyendas si las hubiera
+
+# Mostrar el gráfico combinado
+print(qqplot_combinado)
+
+# Guardar el gráfico combinado como PNG
+ggsave("qqplots_combinados.png", qqplot_combinado, width = 20, height = 30)
+
+
+```
+Lo que observamos en los QQplots de los genes es que, aunque el punto central de la curva toca la línea recta roja, los puntos a ambos lados de la curva se desvían de esta línea. Este comportamiento sugiere que, aunque algunos valores se ajustan a la distribución normal en el centro, las colas de la distribución (es decir, los valores extremos) se alejan de la línea recta. Esto indica que los datos no siguen una distribución normal de manera estricta, ya que las desviaciones en las colas son características de distribuciones no normales, como las distribuciones sesgadas o con colas largas.
+
+## Creacion de dataframe con estadística descriptiva con tratamientos y tumores
+
+```{r}
+
+## Asegúrate de que las columnas trat y tumor sean factores
+genes_tumor_trat$trat <- as.factor(genes_tumor_trat$trat)
+genes_tumor_trat$tumor <- as.factor(genes_tumor_trat$tumor)
+
+# Asegurarse de que las columnas que empiezan con "AQ_" sean numéricas
+genes_tumor_trat <- genes_tumor_trat %>%
+  mutate(across(starts_with("AQ_"), as.numeric))
+
+# Crear tabla descriptiva de genes, estratificada por tratamiento y tumor
+tabla <- genes_tumor_trat %>%
+  tbl_strata(
+    strata = "trat",  # Estratificación por tratamiento
+    .tbl_fun = ~.x %>% 
+      tbl_summary(  # Usar los datos filtrados
+        by = "tumor",  # Agrupar por tumor
+        statistic = all_continuous() ~ "{median} ({p25}–{p75})",  # Mediana y RIQ
+        digits = all_continuous() ~ function(x) format(x, digits = 2, scientific = TRUE),  # Mostrar 2 decimales
+      ) %>%
+      add_p(
+        test = all_continuous() ~ "kruskal.test",  
+        pvalue_fun = ~ style_pvalue(.x)  # Estilo para los valores p
+      )
+  )
+
+# Ver el resultado final
+print(tabla)
+
+# Convertir el objeto gtsummary a un data.frame
+tabla_df <- as.data.frame(tabla)
+
+# Renombrar las columnas p-value y p-value2 para evitar conflicto de nombres
+# Primero reemplazar "p-value" por un nombre único temporal para evitar conflictos
+colnames(tabla_df) <- gsub("p-value", "p_value_temp", colnames(tabla_df))
+
+# Luego asegurarse de que no haya columnas con nombres duplicados
+colnames(tabla_df) <- make.unique(colnames(tabla_df))
+
+# Convertir la tabla renombrada en un flextable
+tabla_flextable <- flextable(tabla_df)
+
+# Crear un documento Word
+doc <- read_docx()
+
+# Agregar la tabla al documento Word
+doc <- doc %>%
+  body_add_par("Resultados Trta_tumor", style = "heading 1") %>%
+  body_add_flextable(tabla_flextable)
+
+# Guardar el documento Word
+print(doc, target = "Resultados_Trta_tumor.docx")
+
+```
+
+### Interpretación de las estadísticas descriptivas
+
+La comparación de la expresión génica en función del tipo de tratamiento (tratA y tratB) y el tipo de tumor (CCR, CM y CP) mostró que hay diferencias significativas en la expresión de varios genes. Dado que los datos no siguen una distribución paramétrica, se utilizaron la mediana y el rango intercuartílico (p25-p75) como medidas de tendencia central y dispersión para describir las distribuciones de cada variable genética. 
+
+Genes como **AQ_ADIPOQ** y **AQ_CCL5** presentan diferencias altamente significativas entre los grupos, con p-valores menores a 0.001 y 0.03, respectivamente. Esto indica que estos genes tienen una expresión considerablemente diferente dependiendo del tipo de tumor o tratamiento, lo que sugiere que su regulación podría estar modulada por factores externos como el tratamiento recibido o el tipo de tumor. La expresión de **AQ_ADIPOQ**, por ejemplo, es notablemente baja en ciertos grupos, y su rango intercuartílico es muy estrecho, lo que indica una variabilidad limitada dentro de ese grupo. Seguramente porque sus valores son 0 en los analálisis previos.
+
+Por otro lado, otros genes como **AQ_ARG1** y **AQ_CCL2** no muestran diferencias significativas entre los grupos evaluados (p>0.05), lo cual implica que su expresión permanece relativamente constante independientemente del tratamiento o tipo de tumor. Este hallazgo puede ser interpretado de diversas maneras, por ejemplo, que estos genes podrían tener un rol en la biología del tumor que no se ve modificado por los tratamientos utilizados, lo que podría ser importante para considerar estos genes como biomarcadores de referencia o de diagnóstico en estudios futuros.
+
+Además, algunos genes como **AQ_NFE2L2** presentan diferencias amplias en la mediana de expresión entre los grupos, lo que indica una variabilidad considerable que podría estar asociada a un efecto específico del tratamiento o del tipo de tumor. Estos cambios drásticos podrían ser indicativos de un patrón de expresión génica muy sensible a ciertos factores, lo que podría tener implicaciones en la identificación de genes clave en el manejo y tratamiento de estos tipos de tumores.
+
+
+## Tabla 3: percentil 50 de edad con t-student
+
+```{r}
+# Calcular el percentil 50 de la edad (mediana)
+percentil_50_edad <- quantile(genes_edad$edad, probs = 0.50, na.rm = TRUE)
+
+# Crear una nueva variable categórica 'edad_categoria' utilizando la función cut() para 2 categorías
+genes_edad$edad_categoria <- cut(
+  genes_edad$edad,
+  breaks = c(-Inf, percentil_50_edad, Inf),  # Divide en dos categorías: < mediana y >= mediana
+  labels = c("Edad_cat < percentil 50", "Edad_cat ≥ percentil 50"),  # Etiquetas para las categorías
+  include.lowest = TRUE  # Incluir el límite inferior (percentil 50) en la segunda categoría
+)
+
+# Verificar las primeras filas del dataframe con la nueva variable
+head(genes_edad)
+
+# Crear la tabla descriptiva utilizando gtsummary, estratificada por la categoría de edad
+tabla_modelo_3 <- genes_edad %>%
+  dplyr::select(edad_categoria, starts_with("AQ_")) %>%  # Seleccionar 'edad_categoria' y las columnas de genes
+  tbl_summary(
+    by = edad_categoria,  # Estratificación por la categoría de edad
+    statistic = all_continuous() ~ "{mean} ({sd})",  # Media y desviación estándar (para variables paramétricas)
+    digits = all_continuous() ~ function(x) format(x, digits = 2, scientific = TRUE),  # Redondear a dos decimales
+    missing = "no"  # Excluir valores faltantes
+  ) %>%
+  add_p(
+    test = all_continuous() ~ "t.test",  # Usar la prueba t de Student para datos paramétricos
+    pvalue_fun = ~ style_pvalue(.x)  # Estilo para los valores p
+  )
+
+# Mostrar la tabla
+print(tabla_modelo_3)
+
+# Convertir el objeto gtsummary a un data.frame
+tabla_df_3 <- as.data.frame(tabla_modelo_3)
+
+# Renombrar las columnas p-value y p-value2 para evitar conflicto de nombres
+# Primero reemplazar "p-value" por un nombre único temporal para evitar conflictos
+colnames(tabla_df_3) <- gsub("p-value", "p_value_temp", colnames(tabla_df_3))
+
+# Luego asegurarse de que no haya columnas con nombres duplicados
+colnames(tabla_df_3) <- make.unique(colnames(tabla_df_3))
+
+# Convertir la tabla renombrada en un flextable
+tabla_flextable_3 <- flextable(tabla_df_3)
+
+# Crear un documento Word
+doc <- read_docx()
+
+# Agregar la tabla al documento Word
+doc <- doc %>%
+  body_add_par("Resultados Edad", style = "heading 1") %>%
+  body_add_flextable(tabla_flextable_3)
+
+# Guardar el documento Word
+print(doc, target = "Resultados Edad.docx")
+
+
+
+```
+
+### Interpretación de las estadísticas descriptivas
+
+Los resultados muestran que en algunas características, como *AQ_IL6*, existen diferencias significativas entre las categorías de edad, con un valor p de 0.013, lo que sugiere que la edad tiene un impacto en los niveles de este gen. Sin embargo, para otras características, como *AQ_ADIPOQ*, *AQ_ALOX5* y *AQ_IL10*, no se observan diferencias significativas, ya que los valores p son mayores que 0.05, indicando que los niveles de estas variables no se ven afectados por la edad. En general, aunque algunas variables presentan diferencias según la edad, muchas no muestran una influencia clara de este factor, lo que sugiere que el efecto de la edad en los genes estudiados es limitado o variable.
