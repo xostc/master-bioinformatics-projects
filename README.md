@@ -25,4 +25,4 @@ Depending on the project, you may need:
 - Conda environment recommended for managing dependencies
 
 ## Contact  
-For questions or collaboration, please contact [your email].
+For questions or collaboration, please contact xosemanuelll@gmail.com.
