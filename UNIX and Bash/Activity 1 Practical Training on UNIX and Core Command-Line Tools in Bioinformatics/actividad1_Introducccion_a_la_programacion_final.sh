@@ -1,0 +1,171 @@
+#!/bin/bash
+set -e #Añado este comando por si hay algún error durante el script para que no se siga ejecutandose.
+
+# Actividad 1 de Introducción a la programación.
+
+echo ""  
+echo "Creo el directorio de trabajo 'actividad_1'..."
+echo "> mkdir actividad1"   #Ilustro los comandos para que puedas ver los que utilizo en la terminal
+echo "> cd actividad1"
+mkdir actividad1          # Creo un directorio llamado 'actividad1'
+cd actividad1             # Cambio al directorio 'actividad1' para trabajar dentro de él
+
+echo "" 
+echo "1----------------------------------------------------"
+
+echo ""  
+echo "Muestro la ruta al directorio actual..."
+echo "> pwd"
+pwd                       # Muestro la ruta completa del directorio actual para confirmar dónde estoy trabajando
+
+echo ""  
+echo "2----------------------------------------------------"
+
+echo ""  
+echo "Creo el subdirectorio 'actividad_2' dentro del directorio 'actividad_1'..."
+echo "> mkdir actividad2"
+mkdir actividad2          # Creo un subdirectorio dentro de 'actividad1' llamado 'actividad2'
+
+echo ""  
+echo "3----------------------------------------------------"
+
+echo ""  
+echo "Borro el subdirectorio vacío 'actividad2'..."
+echo "> rmdir actividad2"
+rmdir actividad2          # Borro el subdirectorio 'actividad2' que está vacío
+
+echo ""  
+echo "4----------------------------------------------------"
+
+echo ""  
+echo "Descargo el archivo 'prokaryotes.txt' desde el servidor NCBI con wget..."
+echo "> wget https://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/prokaryotes.txt"
+wget https://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/prokaryotes.txt
+# Descargo el archivo 'prokaryotes.txt', que contiene información sobre muchas especies genomas procariotas hasta la fecha
+
+echo ""  
+echo "5----------------------------------------------------"
+
+echo ""  
+echo "Muestro las primeras 10 líneas del archivo 'prokaryotes.txt'..."
+echo "> head prokaryotes.txt"
+head prokaryotes.txt      
+# Muestro una vista preliminar del contenido del archivo para verificar la cabecera. Parece que el único # es de la cabecera.
+
+echo ""  
+echo "6----------------------------------------------------"
+
+echo ""  
+echo "Compruebo que existe la especie 'Akkermansia' y cuantos hay en el archivo ..."
+echo "> grep -c \"Akkermansia\" prokaryotes.txt"  
+count_akkermansia=$(grep -c "Akkermansia" prokaryotes.txt)
+echo "Se obtuvo $count_akkermansia coincidencias sin filtrar"
+#Compruebo que existe la especie "Akkermansia" en cualquier linea y cuantas líneas contiene esta especie en el documento original prokaryotes.txt. 
+#Además creo una variable count_akkermansia, me permite que el resultado que se pueda reutilizar
+
+echo ""  
+echo "7----------------------------------------------------"
+
+echo ""  
+echo "Compruebo que el # está solamente en la cabecera del archivo al principio de la línea…"
+echo "> grep \"#\" prokaryotes.txt | head -n 10"
+grep "#" prokaryotes.txt | head -n 10
+# Observo que efectivamente que en la cabecera al principio es el único que tiene el #. 
+
+echo ""  
+echo "8----------------------------------------------------"
+
+echo ""  
+echo "Creo la cabecera el archivo 'akkermansia.txt' desde el archivo 'prokaryotes.txt'..." 
+echo "> grep \"^#\" prokaryotes.txt > akkermansia.txt"
+grep "^#" prokaryotes.txt > akkermansia.txt
+# Extraigo la cabecera (líneas que comienzan con '#') y la escribo en 'akkermansia.txt'
+
+echo ""  
+echo "9----------------------------------------------------"
+
+echo "" 
+echo "Añado al archivo 'akkermansia.txt' los datos'«Akkermansia»'..."
+echo "> grep \"(Akkermansia)\" prokaryotes.txt >> akkermansia.txt"
+grep "^Akkermansia" prokaryotes.txt >> akkermansia.txt
+# Filtro las líneas que contienen la palabra 'Akkermansia' al princpio
+# y guardo el resultado en un archivo nuevo llamado 'akkermansia.txt'
+
+echo ""  
+echo "10----------------------------------------------------"
+
+echo ""  
+echo "Compruebo el número de Akkermansia en el 'akkermansia.txt'..."
+echo "> grep -c \"Akkermansia\" akkermansia.txt" 
+count_akkermansia_2=$(grep -c "Akkermansia" akkermansia.txt)      
+# Compruebo que el numero de genoma de akkermansia está bien
+echo "Se obtuvo $count_akkermansia_2 coincidencias"
+
+echo ""  
+echo "11----------------------------------------------------"
+
+echo ""  
+echo "Muestro las primeras 10 líneas del archivo 'akkermansia.txt'..."
+echo "> head akkermansia.txt"
+head akkermansia.txt      
+# Muestro una vista preliminar del archivo filtrado 'akkermansia.txt'
+
+echo "" 
+echo "12----------------------------------------------------"
+
+echo ""  
+echo "Cuento cuántos genomas de 'Akkermansia muciniphila' hay..."
+echo "> grep -c \"Akkermansia muciniphila\" akkermansia.txt"
+count_muciniphila=$(grep -c "Akkermansia muciniphila" akkermansia.txt)  
+echo "Se obtuvo $count_muciniphila coincidencias" 
+
+echo ""  
+echo "13----------------------------------------------------"
+
+echo ""  
+echo "Cuento cuántos genomas de 'Akkermansia biwaensis' hay..."
+echo "> grep -c \"Akkermansia muciniphila\" akkermansia.txt"
+count_biwaensis=$(grep -c "Akkermansia biwaensis" akkermansia.txt)
+echo "Se obtuvo $count_biwaensis coincidencias" 
+
+echo ""  
+echo "14----------------------------------------------------"
+
+
+echo ""  
+echo "Ordeno los genomas de Akkermansia por mayor tamaño (Mb) y guardo el resultado..."
+echo "> sort -t$'\t' -k9,9n -r akkermansia.txt > akkermansia_clasificada.txt"
+sort -t$'\t' -k9,9n -r akkermansia.txt > akkermansia_clasificada.txt
+# Ordeno el archivo akkermansia.txt por la columna que contiene el tamaño en Mb (columna 9) 
+# en orden descendente y guardo el resultado en akkermansia_sorted.txt
+
+echo ""
+echo "15----------------------------------------------------"
+
+echo ""  
+echo "Las primeras 100 líneas de 'akkermansia_clasificada.txt' son:"
+echo "> head -n 100 akkermansia_clasificada.txt | column -t"
+head -n 100 akkermansia_clasificada.txt | column -t 
+echo "Ver comentario # para su explicación. El archivo no se ordenó bien porque algunas filas no coinciden con las columnas. Usé "k9,9" en mi documento, ya que la mayoría sigue ese patrón, pero hay inconsistencias por la separación entre los datos."
+
+# El archivo no se ha ordenado correctamente porque algunas filas no coinciden con las columnas adecuadas. Utilicé el comando de tabulador para alinear los datos, y en mi documento utilicé el formato "k9,9" ya que la mayoría de los datos siguen ese patrón
+# Sin embargo, debido a que la separación entre los nombres de las columnas no es uniforme, algunas filas de datos del tamaño del genoma aparecen en las columnas 9 o 10 en lugar de la columna 7 original
+# Esto ha generado inconsistencias, ya que algunos subgrupos siguen el formato correcto y están ordenados, mientras que otros no, debido a que no coinciden las filas y columnas correspondientes.
+
+echo ""  
+echo "16----------------------------------------------------"
+
+echo "" 
+echo "Fin de la actividad."
+
+#Nota de uso:
+#0)Convierto el archivo de txt a .sh con `guardar como´
+#1)Una vez exporto la actividad1_Introducccion_a_la_programacion_final.sh a Linux
+#2)Le doy permisos con chomod a+x+w (añado permisos a todos lo usuarios permisos de ejecución y escritura)
+#3)Después uso dos2unix para convertir archivos de texto que tienen saltos de línea en el formato de Windows (CRLF) 
+#al formato de Unix/Linux (LF)
+#4)Ejecuto el archivo con ./actividad1_Introducccion_a_la_programacion_final.sh
+
+
+
+
